@@ -1261,7 +1261,8 @@ class BotRunner:
         await asyncio.gather(
             self.main_bot.start(),
             self.admin_bot.start()
-        )
+)
+```
         
         print("\n✅ Both bots started successfully!")
         print(f"👑 Owner ID: {OWNER_ID}")
