@@ -339,10 +339,15 @@ def proc_phone(m, level):
         return bot.reply_to(m, "❌ Emergency numbers not allowed!")
     
     u = users[str(m.from_user.id)]
-    if u["cr"] < 1:
-        return bot.reply_to(m, "❌ No credits!")
     
-    u["cr"] -= 1
+    # ⭐⭐ FIX: Level 1 is FREE, only deduct for Level 2/3
+    if level == 1:
+        pass  # No credit deduction for Level 1
+    else:
+        if u["cr"] < 1:
+            return bot.reply_to(m, "❌ No credits!")
+        u["cr"] -= 1
+    
     u["total"] = u.get("total", 0) + 1
     users[str(m.from_user.id)] = u
     save()
