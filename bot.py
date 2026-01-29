@@ -736,10 +736,10 @@ if __name__ == "__main__":
     print("="*50 + "\n")
     
     t1 = threading.Thread(target=run_bot, daemon=True)
-    t2 = threading.Thread(target=run_admin, daemon=True)
+    
     
     t1.start()
-    t2.start()
+    
     
     print("✅ Both bots running!")
     print("🛑 Press Ctrl+C to stop\n")
