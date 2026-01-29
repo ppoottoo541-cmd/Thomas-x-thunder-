@@ -305,7 +305,11 @@ def lv_sel(c):
         return bot.answer_callback_query(c.id, "❌ Locked!", show_alert=True)
     
     u = users[str(c.from_user.id)]
-    if u["cr"] < 1:
+    
+    # ⭐⭐ FIX: Level 1 is FREE, Level 2/3 need credits
+    if level == 1:
+        pass  # Level 1 is completely FREE
+    elif u["cr"] < 1:
         return bot.answer_callback_query(c.id, "❌ No credits!", show_alert=True)
     
     cfg = CFG[level]
