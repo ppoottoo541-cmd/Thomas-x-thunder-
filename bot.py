@@ -230,7 +230,7 @@ def start(m):
     kb.row("💰 Credits","📊 Stats")
     kb.row("🎁 Redeem","❓ Help")
     
-    txt = f"""
+        txt = f"""
 🔥 <b>ULTIMATE CALL BOMBER</b> 🔥
 
 👤 <b>User:</b> {u['name']}
@@ -240,11 +240,11 @@ def start(m):
 
 <b>⚡ Levels:</b>
 
-📞 <b>Level 1 (FREE):</b>
+📞 <b>Level 1 (ACTUALLY FREE):</b>
 Duration: 10 min
 Intensity: ~350 calls/min
 Effect: Halka lag
-Cost: 1 credit
+Cost: 0 credits
 
 ⚡ <b>Level 2 (₹499):</b>
 Duration: 10 min
