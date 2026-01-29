@@ -735,10 +735,9 @@ if __name__ == "__main__":
     print(f"🎯 APIs: {len(APIS)}")
     print("="*50 + "\n")
     
-    t1 = threading.Thread(target=run_bot, daemon=True)
-    
-    
-    t1.start()
+    if __name__ == "__main__":
+    print("🤖 Starting MAIN bot...")
+    bot.infinity_polling(skip_pending=True)
     
     
     print("✅ Both bots running!")
