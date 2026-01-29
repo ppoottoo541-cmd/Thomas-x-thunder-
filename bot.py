@@ -282,7 +282,7 @@ def bomb_start(m):
     l = lvl(m.from_user.id)
     
     mk = types.InlineKeyboardMarkup()
-    mk.add(types.InlineKeyboardButton("📞 Level 1 (FREE) ✅", callback_data="lv_1"))
+    mk.add(types.InlineKeyboardButton("📞 Level 1 (FREE) ✅", callback_data="0v_1"))
     
     if l >= 2:
         mk.add(types.InlineKeyboardButton("⚡ Level 2 (UNLOCKED) ✅", callback_data="lv_2"))
