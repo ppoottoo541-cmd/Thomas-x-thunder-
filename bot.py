@@ -356,8 +356,8 @@ async def execute_call_bombing(sid, uid, phone, duration):
             tasks = [hit_call_api(session, api, phone, stats) for api in REAL_CALL_APIS]
             await asyncio.gather(*tasks, return_exceptions=True)
             
-            # Very short delay between waves for maximum speed
-            await asyncio.sleep(0.05)
+            # ULTRA FAST - 0.01 second delay = 100 waves per second
+            await asyncio.sleep(0.01)
             
             logger.info(f"📊 Wave {wave_count}: ✅{stats['ok']} ❌{stats['fail']} Total:{stats['tot']}")
         
@@ -565,12 +565,20 @@ def cb_duration(c):
     except:
         return bot.answer_callback_query(c.id, "❌ Invalid!")
     
-    u = users.get(str(c.from_user.id), {})
-    if u.get("cr", 0) < 1:
-        bot.answer_callback_query(c.id, "❌ No credits!", show_alert=True)
+    uid = str(c.from_user.id)
+    
+    # Reload users to get latest data
+    global users
+    users = load_json(FILES["users"])
+    
+    u = users.get(uid, {})
+    credits = u.get("cr", 0)
+    
+    if credits < 1:
+        bot.answer_callback_query(c.id, f"❌ No credits! You have {credits} credits", show_alert=True)
         return
     
-    users[str(c.from_user.id)]["temp_duration"] = duration
+    users[uid]["temp_duration"] = duration
     save_json(FILES["users"], users)
     
     bot.edit_message_text(
@@ -595,15 +603,21 @@ def handle_phone(m):
         return bot.reply_to(m, "❌ <b>Emergency numbers blocked!</b>")
     
     uid = str(m.from_user.id)
-    u = users.get(uid, {})
     
-    if u.get("cr", 0) < 1:
-        return bot.reply_to(m, "❌ <b>No credits!</b>")
+    # Reload users to get latest data
+    global users
+    users = load_json(FILES["users"])
+    
+    u = users.get(uid, {})
+    credits = u.get("cr", 0)
+    
+    if credits < 1:
+        return bot.reply_to(m, f"❌ <b>No credits!</b>\n\n💰 Your balance: {credits}\n\n📞 Contact {OWNER_USERNAME} to buy!")
     
     duration = u.get("temp_duration", 10)
     
     # Deduct credit
-    u["cr"] -= 1
+    u["cr"] = credits - 1
     u["total"] = u.get("total", 0) + 1
     if "temp_duration" in u:
         del u["temp_duration"]
@@ -662,8 +676,14 @@ def cb_stop(c):
 
 @bot.message_handler(func=lambda m: m.text == "💰 My Credits")
 def btn_credits(m):
+    # Reload users to get latest data
+    global users
+    users = load_json(FILES["users"])
+    
     u = users.get(str(m.from_user.id), {})
-    bot.reply_to(m, f"💰 <b>Credits:</b> {u.get('cr', 0)}\n\n📞 Contact {OWNER_USERNAME} to buy!")
+    credits = u.get("cr", 0)
+    
+    bot.reply_to(m, f"💰 <b>Your Credits:</b> {credits}\n\n📞 Contact {OWNER_USERNAME} to buy more!")
 
 @bot.message_handler(func=lambda m: m.text == "📊 My Stats")
 def btn_stats(m):
