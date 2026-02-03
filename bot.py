@@ -104,6 +104,9 @@ def admin_help(m):
 1. Forward any message from your channel to @userinfobot
 2. Bot will show you the channel ID (starts with -100)
 3. Use that ID in /addchannel command
+
+<b>⚠️ IMPORTANT:</b>
+Main Bot ko channel mein admin banana mat bhoolna!
 """
     admin_bot.send_message(m.chat.id, help_text)
 
@@ -114,10 +117,21 @@ def add_channel(m):
         return
     try:
         ch_id = m.text.split()[1]
+        
+        # Validate channel ID format
+        if not ch_id.startswith("-100"):
+            admin_bot.reply_to(m, "❌ Channel ID must start with -100")
+            return
+        
         data = load_channels()
         data[ch_id] = "added"
         save_channels(data)
-        admin_bot.reply_to(m, f"✅ Channel added: <code>{ch_id}</code>")
+        
+        admin_bot.reply_to(
+            m, 
+            f"✅ Channel added: <code>{ch_id}</code>\n\n"
+            f"⚠️ <b>Important:</b> Main Bot ko is channel mein admin banana mat bhoolna!"
+        )
     except IndexError:
         admin_bot.reply_to(m, "❌ Use: /addchannel -100xxxxxxxx")
     except Exception as e:
@@ -149,7 +163,7 @@ def list_channels(m):
         return
     data = load_channels()
     if not data:
-        admin_bot.reply_to(m, "📭 No channels added yet")
+        admin_bot.reply_to(m, "📭 No channels added yet\n\nUse: /addchannel -100xxxxxxxx")
         return
     txt = "<b>📢 Active Channels:</b>\n\n"
     for i, ch in enumerate(data, 1):
@@ -171,16 +185,19 @@ def list_files(m):
     
     files = load_files()
     if not files:
-        admin_bot.reply_to(m, "📭 No files uploaded yet")
+        admin_bot.reply_to(m, "📭 No files uploaded yet\n\nUse: /upload")
         return
     
-    main_bot_username = main_bot.get_me().username
-    txt = "<b>📁 Uploaded Files:</b>\n\n"
-    for i, (code, data) in enumerate(files.items(), 1):
-        link = f"https://t.me/{main_bot_username}?start=get_{code}"
-        txt += f"{i}. Code: <code>{code}</code>\n   Type: {data['type']}\n   Link: {link}\n\n"
-    
-    admin_bot.send_message(m.chat.id, txt)
+    try:
+        main_bot_username = main_bot.get_me().username
+        txt = "<b>📁 Uploaded Files:</b>\n\n"
+        for i, (code, data) in enumerate(files.items(), 1):
+            link = f"https://t.me/{main_bot_username}?start=get_{code}"
+            txt += f"{i}. Code: <code>{code}</code>\n   Type: {data['type']}\n   Link: <code>{link}</code>\n\n"
+        
+        admin_bot.send_message(m.chat.id, txt)
+    except Exception as e:
+        admin_bot.reply_to(m, f"❌ Error: {e}")
 
 @admin_bot.message_handler(content_types=["document", "video", "photo", "audio"])
 def save_file(m):
@@ -206,17 +223,20 @@ def save_file(m):
 
     save_files(files)
 
-    main_bot_username = main_bot.get_me().username
-    link = f"https://t.me/{main_bot_username}?start=get_{code}"
+    try:
+        main_bot_username = main_bot.get_me().username
+        link = f"https://t.me/{main_bot_username}?start=get_{code}"
 
-    admin_bot.reply_to(
-        m,
-        f"✅ <b>File Saved Successfully!</b>\n\n"
-        f"📋 <b>Code:</b> <code>{code}</code>\n"
-        f"📦 <b>Type:</b> {m.content_type}\n"
-        f"🔗 <b>Share Link:</b>\n<code>{link}</code>\n\n"
-        f"Users can get this file from Main Bot!"
-    )
+        admin_bot.reply_to(
+            m,
+            f"✅ <b>File Saved Successfully!</b>\n\n"
+            f"📋 <b>Code:</b> <code>{code}</code>\n"
+            f"📦 <b>Type:</b> {m.content_type}\n"
+            f"🔗 <b>Share Link:</b>\n<code>{link}</code>\n\n"
+            f"Users can get this file from Main Bot!"
+        )
+    except Exception as e:
+        admin_bot.reply_to(m, f"✅ File saved but error getting link: {e}")
 
 # ================= MAIN BOT COMMANDS =================
 @main_bot.message_handler(commands=["start"])
@@ -246,22 +266,48 @@ def main_start(m):
         btn = types.InlineKeyboardMarkup()
         channels = load_channels()
         
+        if not channels:
+            main_bot.send_message(m.chat.id, "❌ No channels configured. Contact admin.")
+            return
+        
+        channel_added = False
         for ch in channels:
             try:
                 # Get channel info
                 chat_info = main_bot.get_chat(int(ch))
-                channel_name = chat_info.title if hasattr(chat_info, 'title') else f"Channel {ch}"
+                channel_name = chat_info.title if hasattr(chat_info, 'title') else "Join Channel"
                 
-                # Create invite link
-                if chat_info.username:
+                # Create invite link - FIXED PART
+                if hasattr(chat_info, 'username') and chat_info.username:
+                    # Public channel
                     link = f"https://t.me/{chat_info.username}"
                 else:
-                    link = f"https://t.me/c/{str(ch)[4:]}"
+                    # Private channel
+                    channel_id_clean = str(ch).replace('-100', '')
+                    link = f"https://t.me/c/{channel_id_clean}/1"
                 
                 btn.add(types.InlineKeyboardButton(f"📢 {channel_name}", url=link))
+                channel_added = True
+                print(f"✅ Added button for channel: {ch} -> {link}")
+                
             except Exception as e:
-                print(f"Error getting channel info: {e}")
-                continue
+                print(f"❌ Error getting channel {ch} info: {e}")
+                # Agar error aaye toh bhi button add karo
+                try:
+                    channel_id_clean = str(ch).replace('-100', '')
+                    link = f"https://t.me/c/{channel_id_clean}/1"
+                    btn.add(types.InlineKeyboardButton(
+                        f"📢 Join Channel", 
+                        url=link
+                    ))
+                    channel_added = True
+                    print(f"⚠️ Added fallback button for channel: {ch} -> {link}")
+                except Exception as e2:
+                    print(f"❌ Failed to add fallback button: {e2}")
+        
+        if not channel_added:
+            main_bot.send_message(m.chat.id, "❌ Error loading channels. Contact admin.")
+            return
         
         # Add verification button
         btn.add(types.InlineKeyboardButton("✅ Verify Membership", callback_data=f"verify_{code}"))
@@ -269,8 +315,8 @@ def main_start(m):
         main_bot.send_message(
             m.chat.id,
             "🔒 <b>Join all channels to access the file!</b>\n\n"
-            "Click all channel buttons above and join them.\n"
-            "Then click 'Verify Membership' button.",
+            "👇 Click the channel button below and join\n"
+            "✅ Then click 'Verify Membership' button",
             reply_markup=btn
         )
         return
@@ -290,6 +336,7 @@ def send_file_to_user(chat_id, file_data):
             main_bot.send_photo(chat_id, file_data["file_id"], caption="✅ Here's your photo!")
     except Exception as e:
         main_bot.send_message(chat_id, f"❌ Error sending file: {e}")
+        print(f"Error sending file: {e}")
 
 # ================= MAIN BOT CALLBACK HANDLER =================
 @main_bot.callback_query_handler(func=lambda call: call.data.startswith("verify_"))
@@ -303,7 +350,10 @@ def verify_callback(call):
     
     if joined_all(call.from_user.id):
         main_bot.answer_callback_query(call.id, "✅ Verified! Sending file...")
-        main_bot.delete_message(call.message.chat.id, call.message.message_id)
+        try:
+            main_bot.delete_message(call.message.chat.id, call.message.message_id)
+        except:
+            pass
         send_file_to_user(call.message.chat.id, files[code])
     else:
         main_bot.answer_callback_query(call.id, "❌ Please join all channels first!", show_alert=True)
@@ -311,11 +361,17 @@ def verify_callback(call):
 # ================= RUN BOTH BOTS =================
 def run_main_bot():
     print("🤖 Main Bot Started!")
-    main_bot.infinity_polling()
+    try:
+        main_bot.infinity_polling(timeout=60, long_polling_timeout=60)
+    except Exception as e:
+        print(f"Main Bot Error: {e}")
 
 def run_admin_bot():
     print("👨‍💼 Admin Bot Started!")
-    admin_bot.infinity_polling()
+    try:
+        admin_bot.infinity_polling(timeout=60, long_polling_timeout=60)
+    except Exception as e:
+        print(f"Admin Bot Error: {e}")
 
 if __name__ == "__main__":
     print("=" * 50)
@@ -327,11 +383,17 @@ if __name__ == "__main__":
     print("=" * 50)
     
     # Run both bots in separate threads
-    main_thread = threading.Thread(target=run_main_bot)
-    admin_thread = threading.Thread(target=run_admin_bot)
+    main_thread = threading.Thread(target=run_main_bot, daemon=True)
+    admin_thread = threading.Thread(target=run_admin_bot, daemon=True)
     
     main_thread.start()
     admin_thread.start()
     
-    main_thread.join()
-    admin_thread.join()
+    print("✅ Both bots are running!")
+    print("Press Ctrl+C to stop")
+    
+    try:
+        main_thread.join()
+        admin_thread.join()
+    except KeyboardInterrupt:
+        print("\n🛑 Stopping bots...")
