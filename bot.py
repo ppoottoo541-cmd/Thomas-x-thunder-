@@ -8,8 +8,8 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 import sqlite3, random, string, threading
 
 # ========= CONFIG =========
-MAIN_BOT_TOKEN = "MAIN_BOT_TOKEN_HERE"
-ADMIN_BOT_TOKEN = "ADMIN_BOT_TOKEN_HERE"
+MAIN_BOT_TOKEN = "8580329271:AAE8SlxlyggTLW0YSR0YZVGgAtjOYGpoRvI"
+ADMIN_BOT_TOKEN = "8553759431:AAHKDR2BZ1C550sTe749WaizG9jUCncOm18"
 ADMIN_ID = 7417241499   # apna telegram user id
 # ==========================
 
