@@ -22,8 +22,8 @@ logger = logging.getLogger(__name__)
 # CONFIGURATION - YOUR TOKENS
 # ============================================
 
-MAIN_BOT_TOKEN = "8580329271:AAFPmbJ9JraVIAkHbcZtQ5tohIDwWHvjx3I"
-ADMIN_BOT_TOKEN = "8553759431:AAH4BgRJcm1-JI5oBDoYIxR3Vby7oUmJgZQ"
+MAIN_BOT_TOKEN = "8553759431:AAHKDR2BZ1C550sTe749WaizG9jUCncOm18"
+ADMIN_BOT_TOKEN = "8580329271:AAE8SlxlyggTLW0YSR0YZVGgAtjOYGpoRvI"
 ADMIN_ID = 7417241499
 
 # Storage channel (Create private channel, add both bots as admin)
