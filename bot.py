@@ -28,7 +28,7 @@ ADMIN_ID = 7417241499
 
 # Storage channel (Create private channel, add both bots as admin)
 # Get channel ID by forwarding message to @username_to_id_bot
-STORAGE_CHANNEL = -1001234567890  # EDIT THIS - Your storage channel ID
+STORAGE_CHANNEL = -1003518268166  # EDIT THIS - Your storage channel ID
 
 # ============================================
 # INITIALIZATION
