@@ -1,502 +1,373 @@
+"""
+🔥 HACKER STYLE WEB APP 🔥
+Number Info + Call Bomber
+Full Admin Control
+"""
+
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash
+from flask_cors import CORS
+import json
 import os
-import sqlite3
+import requests
 import asyncio
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
+import aiohttp
+from datetime import datetime, timedelta
+import hashlib
+import secrets
+from functools import wraps
 
-# ============================================
-# CONFIGURATION
-# ============================================
-MAIN_BOT_TOKEN = '8580329271:AAE8SlxlyggTLW0YSR0YZVGgAtjOYGpoRvI'
-ADMIN_BOT_TOKEN = '8553759431:AAHKDR2BZ1C550sTe749WaizG9jUCncOm18'
-ADMIN_CHAT_ID = 7417241499
-MAIN_BOT_USERNAME = os.getenv('MAIN_BOT_USERNAME', 'YourMainBotUsername')  # Railway pe set karna hai
-DATABASE = 'bot_database.db'
+app = Flask(__name__)
+app.secret_key = secrets.token_hex(32)
+CORS(app)
 
-# ============================================
-# DATABASE INITIALIZATION
-# ============================================
-def init_db():
-    """Initialize SQLite database with required tables"""
-    conn = sqlite3.connect(DATABASE)
-    cursor = conn.cursor()
-    
-    # Files table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS files (
-            file_id TEXT PRIMARY KEY,
-            file_unique_id TEXT,
-            file_type TEXT,
-            caption TEXT,
-            file_name TEXT
-        )
-    ''')
-    
-    # Channels table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS channels (
-            channel_id TEXT PRIMARY KEY,
-            channel_username TEXT,
-            channel_link TEXT
-        )
-    ''')
-    
-    conn.commit()
-    conn.close()
-    print("✅ Database initialized successfully!")
+# ==================== CONFIGURATION ====================
+ADMIN_USERNAME = "admin"
+ADMIN_PASSWORD = "thomas123"  # Change this!
 
-# ============================================
-# MAIN BOT FUNCTIONS
-# ============================================
+OWNER_USERNAME = "@TGxTHOMASx"
+CHANNEL_LINK = "https://t.me/thomasXstoreee"
+DM_LINK = "https://t.me/TGxTHOMASx"
 
-async def check_user_membership(user_id: int, context: ContextTypes.DEFAULT_TYPE):
-    """Check if user is member of all required channels"""
-    conn = sqlite3.connect(DATABASE)
-    cursor = conn.cursor()
-    cursor.execute('SELECT channel_id FROM channels')
-    channels = cursor.fetchall()
-    conn.close()
-    
-    if not channels:
-        return True, None
-    
-    not_joined = []
-    for channel in channels:
-        channel_id = channel[0]
-        try:
-            member = await context.bot.get_chat_member(chat_id=channel_id, user_id=user_id)
-            if member.status in ['left', 'kicked']:
-                not_joined.append(channel_id)
-        except Exception as e:
-            print(f"❌ Error checking membership for {channel_id}: {e}")
-            not_joined.append(channel_id)
-    
-    return len(not_joined) == 0, not_joined if not_joined else None
+# API Configuration
+API_URL = "https://xfdhftftjuytdyjtfuitydr5ddyyfgkuylhtydry.onrender.com/api/india/number/{number}?token={token}"
+API_TOKEN = "8458169644:13b9efd99198"
 
-def get_channel_buttons():
-    """Get inline keyboard with channel join buttons"""
-    conn = sqlite3.connect(DATABASE)
-    cursor = conn.cursor()
-    cursor.execute('SELECT channel_link, channel_username FROM channels')
-    channels = cursor.fetchall()
-    conn.close()
-    
-    keyboard = []
-    for channel in channels:
-        link = channel[0] if channel[0] else f"https://t.me/{channel[1]}"
-        name = channel[1] if channel[1] else "Join Channel"
-        keyboard.append([InlineKeyboardButton(f"📢 {name}", url=link)])
-    
-    keyboard.append([InlineKeyboardButton("✅ Verify Membership", callback_data="verify")])
-    return InlineKeyboardMarkup(keyboard)
+# Credit Prices
+CREDIT_PRICES = {
+    "25": 2,
+    "50": 5,
+    "100": 12,
+    "200": 25
+}
 
-async def main_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Main bot start command handler"""
-    user = update.effective_user
-    args = context.args
+# Files
+USERS_FILE = "web_users.json"
+SETTINGS_FILE = "web_settings.json"
+BOMBER_APIS_FILE = "bomber_apis.json"
+
+# ==================== FILE OPERATIONS ====================
+def init_files():
+    if not os.path.exists(USERS_FILE):
+        with open(USERS_FILE, "w") as f:
+            json.dump({}, f)
     
-    # Check if it's a file request
-    if args and args[0].startswith('file_'):
-        file_id = args[0].replace('file_', '')
+    if not os.path.exists(SETTINGS_FILE):
+        with open(SETTINGS_FILE, "w") as f:
+            json.dump({
+                "site_name": "THOMAS HACKER TOOLS",
+                "maintenance": False,
+                "bomber_enabled": True,
+                "number_info_enabled": True,
+                "credits_per_search": 1,
+                "credits_per_bomb": 1,
+                "signup_credits": 5,
+                "owner_username": OWNER_USERNAME,
+                "channel_link": CHANNEL_LINK,
+                "dm_link": DM_LINK
+            }, f)
+    
+    if not os.path.exists(BOMBER_APIS_FILE):
+        # Load from uploaded bot file
+        bomber_apis = [
+            {"name": "Tata Capital", "url": "https://mobapp.tatacapital.com/DLPDelegator/authentication/mobile/v0.1/sendOtpOnVoice", "method": "POST", "type": "call"},
+            {"name": "1MG Call", "url": "https://www.1mg.com/auth_api/v6/create_token", "method": "POST", "type": "call"},
+            {"name": "Swiggy Call", "url": "https://profile.swiggy.com/api/v3/app/request_call_verification", "method": "POST", "type": "call"},
+            {"name": "KPN WhatsApp", "url": "https://api.kpnfresh.com/s/authn/api/v1/otp-generate", "method": "POST", "type": "whatsapp"},
+            {"name": "Hungama SMS", "url": "https://communication.api.hungama.com/v1/communication/otp", "method": "POST", "type": "sms"},
+            {"name": "NoBroker SMS", "url": "https://www.nobroker.in/api/v3/account/otp/send", "method": "POST", "type": "sms"},
+        ]
+        with open(BOMBER_APIS_FILE, "w") as f:
+            json.dump(bomber_apis, f)
+
+def load_json(file):
+    try:
+        with open(file, "r") as f:
+            return json.load(f)
+    except:
+        return {}
+
+def save_json(file, data):
+    with open(file, "w") as f:
+        json.dump(data, f, indent=2)
+
+init_files()
+
+users = load_json(USERS_FILE)
+settings = load_json(SETTINGS_FILE)
+bomber_apis = load_json(BOMBER_APIS_FILE)
+
+# ==================== AUTH DECORATORS ====================
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            flash('Please login first!', 'error')
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'admin' not in session or not session['admin']:
+            flash('Admin access required!', 'error')
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+# ==================== HELPER FUNCTIONS ====================
+def get_user(user_id):
+    global users
+    users = load_json(USERS_FILE)
+    return users.get(str(user_id), None)
+
+def create_user(username, password, email=""):
+    user_id = hashlib.md5(f"{username}{datetime.now()}".encode()).hexdigest()[:12]
+    users[user_id] = {
+        "username": username,
+        "password": hashlib.sha256(password.encode()).hexdigest(),
+        "email": email,
+        "credits": settings.get("signup_credits", 5),
+        "created_at": datetime.now().isoformat(),
+        "total_searches": 0,
+        "total_bombs": 0
+    }
+    save_json(USERS_FILE, users)
+    return user_id
+
+def verify_user(username, password):
+    password_hash = hashlib.sha256(password.encode()).hexdigest()
+    for uid, user in users.items():
+        if user["username"] == username and user["password"] == password_hash:
+            return uid
+    return None
+
+def make_number_info_request(number):
+    try:
+        url = API_URL.format(number=number, token=API_TOKEN)
+        response = requests.get(url, timeout=10)
+        return response.json() if response.status_code == 200 else None
+    except:
+        return None
+
+# ==================== ROUTES ====================
+
+@app.route('/')
+def index():
+    if 'user_id' in session:
+        return redirect(url_for('dashboard'))
+    return render_template('index.html', settings=settings)
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
         
-        # Check membership
-        is_member, not_joined = await check_user_membership(user.id, context)
+        # Check admin
+        if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+            session['admin'] = True
+            session['user_id'] = 'admin'
+            flash('Admin login successful!', 'success')
+            return redirect(url_for('admin_panel'))
         
-        if not is_member:
-            await update.message.reply_text(
-                f"👋 Hello {user.first_name}!\n\n"
-                "🔒 To access this file, you need to join our channels first:\n\n"
-                "Click the buttons below to join, then click 'Verify Membership'",
-                reply_markup=get_channel_buttons()
-            )
-            # Store file_id in user_data for later
-            context.user_data['pending_file'] = file_id
+        # Check user
+        user_id = verify_user(username, password)
+        if user_id:
+            session['user_id'] = user_id
+            flash('Login successful!', 'success')
+            return redirect(url_for('dashboard'))
+        
+        flash('Invalid credentials!', 'error')
+    
+    return render_template('login.html', settings=settings)
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        email = request.form.get('email', '')
+        
+        # Check if username exists
+        for user in users.values():
+            if user['username'] == username:
+                flash('Username already exists!', 'error')
+                return render_template('register.html', settings=settings)
+        
+        user_id = create_user(username, password, email)
+        session['user_id'] = user_id
+        flash(f'Account created! You got {settings.get("signup_credits", 5)} free credits!', 'success')
+        return redirect(url_for('dashboard'))
+    
+    return render_template('register.html', settings=settings)
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    flash('Logged out successfully!', 'success')
+    return redirect(url_for('index'))
+
+@app.route('/dashboard')
+@login_required
+def dashboard():
+    user = get_user(session['user_id'])
+    if not user:
+        return redirect(url_for('logout'))
+    
+    return render_template('dashboard.html', user=user, settings=settings)
+
+@app.route('/number-info', methods=['GET', 'POST'])
+@login_required
+def number_info():
+    user = get_user(session['user_id'])
+    
+    if request.method == 'POST':
+        number = request.form.get('number', '').strip()
+        
+        if not number or len(number) != 10 or not number.isdigit():
+            flash('Invalid phone number! Enter 10 digits.', 'error')
+            return render_template('number_info.html', user=user, settings=settings)
+        
+        # Check credits
+        if user['credits'] < settings.get('credits_per_search', 1):
+            flash('Insufficient credits! Buy more credits.', 'error')
+            return render_template('number_info.html', user=user, settings=settings)
+        
+        # Make API request
+        result = make_number_info_request(number)
+        
+        if result:
+            # Deduct credit
+            users[session['user_id']]['credits'] -= settings.get('credits_per_search', 1)
+            users[session['user_id']]['total_searches'] += 1
+            save_json(USERS_FILE, users)
+            
+            return render_template('number_info.html', user=get_user(session['user_id']), result=result, number=number, settings=settings)
         else:
-            # Send file directly
-            await send_file(update, context, file_id)
-    else:
-        await update.message.reply_text(
-            f"👋 Welcome {user.first_name}!\n\n"
-            "🤖 I'm a file sharing bot.\n\n"
-            "📎 To get files, use the links provided by admin.\n\n"
-            "✨ Enjoy!"
-        )
+            flash('Failed to fetch data! Try again.', 'error')
+    
+    return render_template('number_info.html', user=user, settings=settings)
 
-async def verify_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle verify membership button callback"""
-    query = update.callback_query
-    await query.answer()
+@app.route('/call-bomber', methods=['GET', 'POST'])
+@login_required
+def call_bomber():
+    user = get_user(session['user_id'])
     
-    user = query.from_user
-    is_member, not_joined = await check_user_membership(user.id, context)
-    
-    if is_member:
-        await query.message.edit_text("✅ Verification successful! Sending your file...")
+    if request.method == 'POST':
+        number = request.form.get('number', '').strip()
+        duration = int(request.form.get('duration', 5))
         
-        # Get pending file from user_data
-        file_id = context.user_data.get('pending_file')
-        if file_id:
-            await send_file_to_user(query.message, context, file_id, user.id)
-            context.user_data.pop('pending_file', None)
-        else:
-            await query.message.reply_text("❌ File not found. Please use the link again.")
-    else:
-        await query.message.reply_text(
-            "❌ You haven't joined all channels yet!\n\n"
-            "Please join all channels and click 'Verify Membership' again.",
-            reply_markup=get_channel_buttons()
-        )
-
-async def send_file(update: Update, context: ContextTypes.DEFAULT_TYPE, file_id: str):
-    """Send file to user after verification"""
-    conn = sqlite3.connect(DATABASE)
-    cursor = conn.cursor()
-    cursor.execute('SELECT * FROM files WHERE file_id = ?', (file_id,))
-    file_data = cursor.fetchone()
-    conn.close()
-    
-    if file_data:
-        file_unique_id, file_type, caption, file_name = file_data[1], file_data[2], file_data[3], file_data[4]
+        if not number or len(number) != 10 or not number.isdigit():
+            flash('Invalid phone number!', 'error')
+            return render_template('call_bomber.html', user=user, settings=settings)
         
-        try:
-            if file_type == 'document':
-                await update.message.reply_document(
-                    document=file_id,
-                    caption=caption if caption else f"📁 {file_name}"
-                )
-            elif file_type == 'video':
-                await update.message.reply_video(
-                    video=file_id,
-                    caption=caption if caption else f"🎬 {file_name}"
-                )
-            elif file_type == 'audio':
-                await update.message.reply_audio(
-                    audio=file_id,
-                    caption=caption if caption else f"🎵 {file_name}"
-                )
-            elif file_type == 'photo':
-                await update.message.reply_photo(
-                    photo=file_id,
-                    caption=caption if caption else "🖼️ Photo"
-                )
-        except Exception as e:
-            await update.message.reply_text(f"❌ Error sending file: {str(e)}")
-    else:
-        await update.message.reply_text("❌ File not found!")
-
-async def send_file_to_user(message, context: ContextTypes.DEFAULT_TYPE, file_id: str, user_id: int):
-    """Send file directly to user (for callback)"""
-    conn = sqlite3.connect(DATABASE)
-    cursor = conn.cursor()
-    cursor.execute('SELECT * FROM files WHERE file_id = ?', (file_id,))
-    file_data = cursor.fetchone()
-    conn.close()
-    
-    if file_data:
-        file_unique_id, file_type, caption, file_name = file_data[1], file_data[2], file_data[3], file_data[4]
+        # Check credits
+        if user['credits'] < settings.get('credits_per_bomb', 1):
+            flash('Insufficient credits!', 'error')
+            return render_template('call_bomber.html', user=user, settings=settings)
         
-        try:
-            if file_type == 'document':
-                await context.bot.send_document(
-                    chat_id=user_id,
-                    document=file_id,
-                    caption=caption if caption else f"📁 {file_name}"
-                )
-            elif file_type == 'video':
-                await context.bot.send_video(
-                    chat_id=user_id,
-                    video=file_id,
-                    caption=caption if caption else f"🎬 {file_name}"
-                )
-            elif file_type == 'audio':
-                await context.bot.send_audio(
-                    chat_id=user_id,
-                    audio=file_id,
-                    caption=caption if caption else f"🎵 {file_name}"
-                )
-            elif file_type == 'photo':
-                await context.bot.send_photo(
-                    chat_id=user_id,
-                    photo=file_id,
-                    caption=caption if caption else "🖼️ Photo"
-                )
-        except Exception as e:
-            await message.reply_text(f"❌ Error sending file: {str(e)}")
-    else:
-        await message.reply_text("❌ File not found!")
-
-# ============================================
-# ADMIN BOT FUNCTIONS
-# ============================================
-
-def is_admin(user_id: int):
-    """Check if user is admin"""
-    return user_id == ADMIN_CHAT_ID
-
-async def admin_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Admin bot start command handler"""
-    user = update.effective_user
-    
-    if not is_admin(user.id):
-        await update.message.reply_text("❌ You are not authorized to use this bot!")
-        return
-    
-    await update.message.reply_text(
-        "👨‍💼 *Admin Bot Control Panel*\n\n"
-        "📎 *File Management:*\n"
-        "• Send any file to get a shareable link\n\n"
-        "📢 *Channel Management:*\n"
-        "• `/addchannel <channel_id> <link>` - Add forced channel\n"
-        "• `/removechannel <channel_id>` - Remove channel\n"
-        "• `/listchannels` - List all channels\n\n"
-        "💡 *Example:*\n"
-        "`/addchannel -1001234567890 https://t.me/yourchannel`",
-        parse_mode='Markdown'
-    )
-
-async def add_channel(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Add forced subscription channel"""
-    user = update.effective_user
-    
-    if not is_admin(user.id):
-        await update.message.reply_text("❌ You are not authorized!")
-        return
-    
-    if len(context.args) < 2:
-        await update.message.reply_text(
-            "❌ Usage: `/addchannel <channel_id> <link>`\n\n"
-            "Example: `/addchannel -1001234567890 https://t.me/yourchannel`",
-            parse_mode='Markdown'
-        )
-        return
-    
-    channel_id = context.args[0]
-    channel_link = context.args[1]
-    
-    # Try to get channel username
-    channel_username = None
-    try:
-        chat = await context.bot.get_chat(channel_id)
-        channel_username = chat.username
-    except Exception as e:
-        print(f"Could not get channel info: {e}")
-    
-    # Add to database
-    conn = sqlite3.connect(DATABASE)
-    cursor = conn.cursor()
-    try:
-        cursor.execute(
-            'INSERT OR REPLACE INTO channels (channel_id, channel_username, channel_link) VALUES (?, ?, ?)',
-            (channel_id, channel_username, channel_link)
-        )
-        conn.commit()
-        await update.message.reply_text(
-            f"✅ Channel added successfully!\n\n"
-            f"🆔 ID: `{channel_id}`\n"
-            f"🔗 Link: {channel_link}",
-            parse_mode='Markdown'
-        )
-    except Exception as e:
-        await update.message.reply_text(f"❌ Error: {str(e)}")
-    finally:
-        conn.close()
-
-async def remove_channel(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Remove forced subscription channel"""
-    user = update.effective_user
-    
-    if not is_admin(user.id):
-        await update.message.reply_text("❌ You are not authorized!")
-        return
-    
-    if len(context.args) < 1:
-        await update.message.reply_text(
-            "❌ Usage: `/removechannel <channel_id>`\n\n"
-            "Example: `/removechannel -1001234567890`",
-            parse_mode='Markdown'
-        )
-        return
-    
-    channel_id = context.args[0]
-    
-    conn = sqlite3.connect(DATABASE)
-    cursor = conn.cursor()
-    cursor.execute('DELETE FROM channels WHERE channel_id = ?', (channel_id,))
-    conn.commit()
-    
-    if cursor.rowcount > 0:
-        await update.message.reply_text(f"✅ Channel `{channel_id}` removed successfully!", parse_mode='Markdown')
-    else:
-        await update.message.reply_text(f"❌ Channel `{channel_id}` not found!", parse_mode='Markdown')
-    
-    conn.close()
-
-async def list_channels(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """List all forced subscription channels"""
-    user = update.effective_user
-    
-    if not is_admin(user.id):
-        await update.message.reply_text("❌ You are not authorized!")
-        return
-    
-    conn = sqlite3.connect(DATABASE)
-    cursor = conn.cursor()
-    cursor.execute('SELECT * FROM channels')
-    channels = cursor.fetchall()
-    conn.close()
-    
-    if not channels:
-        await update.message.reply_text("📢 No forced channels added yet!")
-        return
-    
-    message = "📢 *Forced Channels List:*\n\n"
-    for idx, channel in enumerate(channels, 1):
-        channel_id, username, link = channel
-        message += f"{idx}. 🆔 `{channel_id}`\n"
-        if username:
-            message += f"   👤 @{username}\n"
-        if link:
-            message += f"   🔗 {link}\n"
-        message += "\n"
-    
-    await update.message.reply_text(message, parse_mode='Markdown')
-
-async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle file uploads from admin"""
-    user = update.effective_user
-    
-    if not is_admin(user.id):
-        await update.message.reply_text("❌ You are not authorized!")
-        return
-    
-    message = update.message
-    file_id = None
-    file_unique_id = None
-    file_type = None
-    file_name = "Unknown"
-    caption = message.caption
-    
-    # Determine file type and get file_id
-    if message.document:
-        file_id = message.document.file_id
-        file_unique_id = message.document.file_unique_id
-        file_type = 'document'
-        file_name = message.document.file_name
-    elif message.video:
-        file_id = message.video.file_id
-        file_unique_id = message.video.file_unique_id
-        file_type = 'video'
-        file_name = message.video.file_name or "Video"
-    elif message.audio:
-        file_id = message.audio.file_id
-        file_unique_id = message.audio.file_unique_id
-        file_type = 'audio'
-        file_name = message.audio.file_name or "Audio"
-    elif message.photo:
-        file_id = message.photo[-1].file_id
-        file_unique_id = message.photo[-1].file_unique_id
-        file_type = 'photo'
-        file_name = "Photo"
-    
-    if not file_id:
-        await update.message.reply_text("❌ No valid file found!")
-        return
-    
-    # Save to database
-    conn = sqlite3.connect(DATABASE)
-    cursor = conn.cursor()
-    try:
-        cursor.execute(
-            'INSERT OR REPLACE INTO files (file_id, file_unique_id, file_type, caption, file_name) VALUES (?, ?, ?, ?, ?)',
-            (file_id, file_unique_id, file_type, caption, file_name)
-        )
-        conn.commit()
+        # Deduct credit
+        users[session['user_id']]['credits'] -= settings.get('credits_per_bomb', 1)
+        users[session['user_id']]['total_bombs'] += 1
+        save_json(USERS_FILE, users)
         
-        # Generate shareable link
-        share_link = f"https://t.me/{MAIN_BOT_USERNAME}?start=file_{file_id}"
+        flash(f'Bombing started on {number} for {duration} minutes!', 'success')
         
-        await update.message.reply_text(
-            f"✅ *File Uploaded Successfully!*\n\n"
-            f"📁 Name: `{file_name}`\n"
-            f"📎 Type: `{file_type}`\n"
-            f"🆔 File ID: `{file_id}`\n\n"
-            f"🔗 *Share Link:*\n`{share_link}`\n\n"
-            f"💡 Users will need to join forced channels before accessing the file.",
-            parse_mode='Markdown'
-        )
-    except Exception as e:
-        await update.message.reply_text(f"❌ Error saving file: {str(e)}")
-    finally:
-        conn.close()
+        # TODO: Implement actual bombing (background task)
+        
+        return render_template('call_bomber.html', user=get_user(session['user_id']), settings=settings, bombing=True, number=number, duration=duration)
+    
+    return render_template('call_bomber.html', user=user, settings=settings)
 
-# ============================================
-# BOT RUNNERS
-# ============================================
+@app.route('/buy-credits')
+@login_required
+def buy_credits():
+    user = get_user(session['user_id'])
+    return render_template('buy_credits.html', user=user, prices=CREDIT_PRICES, settings=settings)
 
-async def run_main_bot():
-    """Run main bot (user-facing)"""
-    print("🚀 Starting Main Bot...")
-    application = Application.builder().token(MAIN_BOT_TOKEN).build()
-    
-    # Add handlers
-    application.add_handler(CommandHandler("start", main_start))
-    application.add_handler(CallbackQueryHandler(verify_callback, pattern="^verify$"))
-    
-    print("✅ Main Bot started successfully!")
-    await application.run_polling(allowed_updates=Update.ALL_TYPES)
+@app.route('/contact')
+def contact():
+    return render_template('contact.html', settings=settings)
 
-async def run_admin_bot():
-    """Run admin bot (file upload & management)"""
-    print("🚀 Starting Admin Bot...")
-    application = Application.builder().token(ADMIN_BOT_TOKEN).build()
-    
-    # Add handlers
-    application.add_handler(CommandHandler("start", admin_start))
-    application.add_handler(CommandHandler("addchannel", add_channel))
-    application.add_handler(CommandHandler("removechannel", remove_channel))
-    application.add_handler(CommandHandler("listchannels", list_channels))
-    
-    # Handle all file types
-    application.add_handler(MessageHandler(
-        filters.Document.ALL | filters.VIDEO | filters.AUDIO | filters.PHOTO,
-        handle_file
-    ))
-    
-    print("✅ Admin Bot started successfully!")
-    await application.run_polling(allowed_updates=Update.ALL_TYPES)
+# ==================== ADMIN ROUTES ====================
 
-async def main():
-    """Run both bots concurrently"""
-    print("=" * 50)
-    print("🤖 TELEGRAM FILE SHARING BOT SYSTEM")
-    print("=" * 50)
+@app.route('/admin')
+@admin_required
+def admin_panel():
+    total_users = len(users)
+    total_credits = sum(u.get('credits', 0) for u in users.values())
     
-    # Initialize database
-    init_db()
-    
-    print(f"\n📋 Configuration:")
-    print(f"   Main Bot Token: {MAIN_BOT_TOKEN[:10]}...")
-    print(f"   Admin Bot Token: {ADMIN_BOT_TOKEN[:10]}...")
-    print(f"   Admin Chat ID: {ADMIN_CHAT_ID}")
-    print(f"   Main Bot Username: @{MAIN_BOT_USERNAME}")
-    print(f"   Database: {DATABASE}")
-    print("\n" + "=" * 50 + "\n")
-    
-    # Create tasks for both bots
-    main_bot_task = asyncio.create_task(run_main_bot())
-    admin_bot_task = asyncio.create_task(run_admin_bot())
-    
-    # Wait for both tasks
-    await asyncio.gather(main_bot_task, admin_bot_task)
+    return render_template('admin/dashboard.html', 
+                         total_users=total_users,
+                         total_credits=total_credits,
+                         settings=settings)
 
-# ============================================
-# ENTRY POINT
-# ============================================
+@app.route('/admin/users')
+@admin_required
+def admin_users():
+    return render_template('admin/users.html', users=users, settings=settings)
+
+@app.route('/admin/settings', methods=['GET', 'POST'])
+@admin_required
+def admin_settings():
+    if request.method == 'POST':
+        settings['site_name'] = request.form.get('site_name', settings['site_name'])
+        settings['maintenance'] = request.form.get('maintenance') == 'on'
+        settings['bomber_enabled'] = request.form.get('bomber_enabled') == 'on'
+        settings['number_info_enabled'] = request.form.get('number_info_enabled') == 'on'
+        settings['credits_per_search'] = int(request.form.get('credits_per_search', 1))
+        settings['credits_per_bomb'] = int(request.form.get('credits_per_bomb', 1))
+        settings['signup_credits'] = int(request.form.get('signup_credits', 5))
+        settings['owner_username'] = request.form.get('owner_username', OWNER_USERNAME)
+        settings['channel_link'] = request.form.get('channel_link', CHANNEL_LINK)
+        settings['dm_link'] = request.form.get('dm_link', DM_LINK)
+        
+        save_json(SETTINGS_FILE, settings)
+        flash('Settings updated!', 'success')
+        return redirect(url_for('admin_settings'))
+    
+    return render_template('admin/settings.html', settings=settings)
+
+@app.route('/admin/add-credits', methods=['POST'])
+@admin_required
+def admin_add_credits():
+    user_id = request.form.get('user_id')
+    amount = int(request.form.get('amount', 0))
+    
+    if user_id in users:
+        users[user_id]['credits'] = users[user_id].get('credits', 0) + amount
+        save_json(USERS_FILE, users)
+        flash(f'Added {amount} credits to user!', 'success')
+    else:
+        flash('User not found!', 'error')
+    
+    return redirect(url_for('admin_users'))
+
+@app.route('/admin/delete-user/<user_id>')
+@admin_required
+def admin_delete_user(user_id):
+    if user_id in users:
+        del users[user_id]
+        save_json(USERS_FILE, users)
+        flash('User deleted!', 'success')
+    
+    return redirect(url_for('admin_users'))
+
+# ==================== API ENDPOINTS ====================
+
+@app.route('/api/bomber/start', methods=['POST'])
+@login_required
+def api_bomber_start():
+    data = request.json
+    number = data.get('number')
+    duration = int(data.get('duration', 5))
+    
+    # TODO: Implement bombing logic
+    
+    return jsonify({"status": "success", "message": "Bombing started"})
+
+# ==================== RUN ====================
 
 if __name__ == '__main__':
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        print("\n\n🛑 Bots stopped by user")
-    except Exception as e:
-        print(f"\n\n❌ Error: {e}")
+    app.run(host='0.0.0.0', port=5000, debug=True)
