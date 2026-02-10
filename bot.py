@@ -1,49 +1,41 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
-🔥 HACKER STYLE WEB APP 🔥
-Number Info + Call Bomber
-Full Admin Control
+🤖 ADVANCED AI CHATBOT
+Powered by WORMgpt API
+Clean & Professional Replies
 """
 
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash
-from flask_cors import CORS
+import telebot
+from telebot import types
+import requests
 import json
 import os
-import requests
-import asyncio
-import aiohttp
-from datetime import datetime, timedelta
-import hashlib
-import secrets
-from functools import wraps
+import time
+from datetime import datetime
+import threading
+import logging
 
-app = Flask(__name__)
-app.secret_key = secrets.token_hex(32)
-CORS(app)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 # ==================== CONFIGURATION ====================
-ADMIN_USERNAME = "admin"
-ADMIN_PASSWORD = "thomas123"  # Change this!
+MAIN_BOT_TOKEN = "8532068765:AAHxGgjltPhimYAGIjeHwZpP_Pkn-bbLBoQ"
+ADMIN_BOT_TOKEN = "8586819943:AAG6w5gMAfmY8TR8I4ZS4VJqrV3NwvlSLNs"
+OWNER_ID = 7417241499
 
-OWNER_USERNAME = "@TGxTHOMASx"
-CHANNEL_LINK = "https://t.me/thomasXstoreee"
-DM_LINK = "https://t.me/TGxTHOMASx"
+# AI API Configuration
+AI_API_URL = "https://usesir.vercel.app/api/WORMgpt"
+AI_API_KEY = "bday"
 
-# API Configuration
-API_URL = "https://xfdhftftjuytdyjtfuitydr5ddyyfgkuylhtydry.onrender.com/api/india/number/{number}?token={token}"
-API_TOKEN = "8458169644:13b9efd99198"
-
-# Credit Prices
-CREDIT_PRICES = {
-    "25": 2,
-    "50": 5,
-    "100": 12,
-    "200": 25
-}
+# Bot Settings
+BOT_NAME = "AI Assistant"
+BOT_USERNAME = "@YourBotUsername"  # Update after creation
 
 # Files
-USERS_FILE = "web_users.json"
-SETTINGS_FILE = "web_settings.json"
-BOMBER_APIS_FILE = "bomber_apis.json"
+USERS_FILE = "ai_users.json"
+SETTINGS_FILE = "ai_settings.json"
+CHAT_HISTORY_FILE = "chat_history.json"
 
 # ==================== FILE OPERATIONS ====================
 def init_files():
@@ -54,30 +46,16 @@ def init_files():
     if not os.path.exists(SETTINGS_FILE):
         with open(SETTINGS_FILE, "w") as f:
             json.dump({
-                "site_name": "THOMAS HACKER TOOLS",
-                "maintenance": False,
-                "bomber_enabled": True,
-                "number_info_enabled": True,
-                "credits_per_search": 1,
-                "credits_per_bomb": 1,
-                "signup_credits": 5,
-                "owner_username": OWNER_USERNAME,
-                "channel_link": CHANNEL_LINK,
-                "dm_link": DM_LINK
+                "bot_active": True,
+                "maintenance_msg": "Bot is under maintenance.",
+                "chat_mode_users": [],
+                "banned_users": [],
+                "total_requests": 0
             }, f)
     
-    if not os.path.exists(BOMBER_APIS_FILE):
-        # Load from uploaded bot file
-        bomber_apis = [
-            {"name": "Tata Capital", "url": "https://mobapp.tatacapital.com/DLPDelegator/authentication/mobile/v0.1/sendOtpOnVoice", "method": "POST", "type": "call"},
-            {"name": "1MG Call", "url": "https://www.1mg.com/auth_api/v6/create_token", "method": "POST", "type": "call"},
-            {"name": "Swiggy Call", "url": "https://profile.swiggy.com/api/v3/app/request_call_verification", "method": "POST", "type": "call"},
-            {"name": "KPN WhatsApp", "url": "https://api.kpnfresh.com/s/authn/api/v1/otp-generate", "method": "POST", "type": "whatsapp"},
-            {"name": "Hungama SMS", "url": "https://communication.api.hungama.com/v1/communication/otp", "method": "POST", "type": "sms"},
-            {"name": "NoBroker SMS", "url": "https://www.nobroker.in/api/v3/account/otp/send", "method": "POST", "type": "sms"},
-        ]
-        with open(BOMBER_APIS_FILE, "w") as f:
-            json.dump(bomber_apis, f)
+    if not os.path.exists(CHAT_HISTORY_FILE):
+        with open(CHAT_HISTORY_FILE, "w") as f:
+            json.dump({}, f)
 
 def load_json(file):
     try:
@@ -94,280 +72,684 @@ init_files()
 
 users = load_json(USERS_FILE)
 settings = load_json(SETTINGS_FILE)
-bomber_apis = load_json(BOMBER_APIS_FILE)
+chat_history = load_json(CHAT_HISTORY_FILE)
 
-# ==================== AUTH DECORATORS ====================
-def login_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if 'user_id' not in session:
-            flash('Please login first!', 'error')
-            return redirect(url_for('login'))
-        return f(*args, **kwargs)
-    return decorated_function
+bot = telebot.TeleBot(MAIN_BOT_TOKEN, parse_mode="HTML")
+admin_bot = telebot.TeleBot(ADMIN_BOT_TOKEN, parse_mode="HTML")
 
-def admin_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if 'admin' not in session or not session['admin']:
-            flash('Admin access required!', 'error')
-            return redirect(url_for('login'))
-        return f(*args, **kwargs)
-    return decorated_function
+logger.info(f"✅ Main Bot: @{bot.get_me().username}")
+logger.info(f"✅ Admin Bot: @{admin_bot.get_me().username}")
 
 # ==================== HELPER FUNCTIONS ====================
-def get_user(user_id):
-    global users
-    users = load_json(USERS_FILE)
-    return users.get(str(user_id), None)
 
-def create_user(username, password, email=""):
-    user_id = hashlib.md5(f"{username}{datetime.now()}".encode()).hexdigest()[:12]
-    users[user_id] = {
-        "username": username,
-        "password": hashlib.sha256(password.encode()).hexdigest(),
-        "email": email,
-        "credits": settings.get("signup_credits", 5),
-        "created_at": datetime.now().isoformat(),
-        "total_searches": 0,
-        "total_bombs": 0
-    }
-    save_json(USERS_FILE, users)
-    return user_id
+def is_owner(uid):
+    return uid == OWNER_ID
 
-def verify_user(username, password):
-    password_hash = hashlib.sha256(password.encode()).hexdigest()
-    for uid, user in users.items():
-        if user["username"] == username and user["password"] == password_hash:
-            return uid
-    return None
+def is_banned(uid):
+    return uid in settings.get("banned_users", [])
 
-def make_number_info_request(number):
+def get_user(uid):
+    uid_str = str(uid)
+    if uid_str not in users:
+        users[uid_str] = {
+            "user_id": uid,
+            "name": "",
+            "username": "",
+            "joined": datetime.now().isoformat(),
+            "total_requests": 0,
+            "chat_mode": False,
+            "last_active": datetime.now().isoformat()
+        }
+        save_json(USERS_FILE, users)
+    return users[uid_str]
+
+def update_user_activity(uid, name, username):
+    uid_str = str(uid)
+    if uid_str in users:
+        users[uid_str]["name"] = name
+        users[uid_str]["username"] = username
+        users[uid_str]["last_active"] = datetime.now().isoformat()
+        save_json(USERS_FILE, users)
+
+def make_ai_request(text):
+    """Make request to WORMgpt API"""
     try:
-        url = API_URL.format(number=number, token=API_TOKEN)
-        response = requests.get(url, timeout=10)
-        return response.json() if response.status_code == 200 else None
-    except:
+        params = {
+            "key": AI_API_KEY,
+            "text": text
+        }
+        response = requests.get(AI_API_URL, params=params, timeout=30)
+        
+        if response.status_code == 200:
+            data = response.json()
+            
+            # Extract reply from different possible response formats
+            if isinstance(data, dict):
+                reply = data.get("reply") or data.get("response") or data.get("answer") or data.get("result")
+                if reply:
+                    return reply
+            elif isinstance(data, str):
+                return data
+            
+            return response.text
+        else:
+            return None
+    except Exception as e:
+        logger.error(f"AI API Error: {e}")
         return None
 
-# ==================== ROUTES ====================
-
-@app.route('/')
-def index():
-    if 'user_id' in session:
-        return redirect(url_for('dashboard'))
-    return render_template('index.html', settings=settings)
-
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
-        
-        # Check admin
-        if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
-            session['admin'] = True
-            session['user_id'] = 'admin'
-            flash('Admin login successful!', 'success')
-            return redirect(url_for('admin_panel'))
-        
-        # Check user
-        user_id = verify_user(username, password)
-        if user_id:
-            session['user_id'] = user_id
-            flash('Login successful!', 'success')
-            return redirect(url_for('dashboard'))
-        
-        flash('Invalid credentials!', 'error')
+def format_ai_reply(question, answer):
+    """Format AI reply in clean style"""
+    reply = f"<b>🤖 AI Assistant</b>\n\n"
     
-    return render_template('login.html', settings=settings)
-
-@app.route('/register', methods=['GET', 'POST'])
-def register():
-    if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
-        email = request.form.get('email', '')
-        
-        # Check if username exists
-        for user in users.values():
-            if user['username'] == username:
-                flash('Username already exists!', 'error')
-                return render_template('register.html', settings=settings)
-        
-        user_id = create_user(username, password, email)
-        session['user_id'] = user_id
-        flash(f'Account created! You got {settings.get("signup_credits", 5)} free credits!', 'success')
-        return redirect(url_for('dashboard'))
+    # Question
+    reply += f"<b>❓ Question:</b>\n<i>{question}</i>\n\n"
     
-    return render_template('register.html', settings=settings)
-
-@app.route('/logout')
-def logout():
-    session.clear()
-    flash('Logged out successfully!', 'success')
-    return redirect(url_for('index'))
-
-@app.route('/dashboard')
-@login_required
-def dashboard():
-    user = get_user(session['user_id'])
-    if not user:
-        return redirect(url_for('logout'))
+    # Answer
+    reply += f"<b>💡 Answer:</b>\n{answer}\n\n"
     
-    return render_template('dashboard.html', user=user, settings=settings)
+    # Footer
+    reply += f"<code>───────────────────</code>\n"
+    reply += f"<i>Powered by WORMgpt</i>"
+    
+    return reply
 
-@app.route('/number-info', methods=['GET', 'POST'])
-@login_required
-def number_info():
-    user = get_user(session['user_id'])
+def save_chat_history(uid, question, answer):
+    """Save chat history"""
+    uid_str = str(uid)
+    if uid_str not in chat_history:
+        chat_history[uid_str] = []
     
-    if request.method == 'POST':
-        number = request.form.get('number', '').strip()
-        
-        if not number or len(number) != 10 or not number.isdigit():
-            flash('Invalid phone number! Enter 10 digits.', 'error')
-            return render_template('number_info.html', user=user, settings=settings)
-        
-        # Check credits
-        if user['credits'] < settings.get('credits_per_search', 1):
-            flash('Insufficient credits! Buy more credits.', 'error')
-            return render_template('number_info.html', user=user, settings=settings)
-        
-        # Make API request
-        result = make_number_info_request(number)
-        
-        if result:
-            # Deduct credit
-            users[session['user_id']]['credits'] -= settings.get('credits_per_search', 1)
-            users[session['user_id']]['total_searches'] += 1
-            save_json(USERS_FILE, users)
-            
-            return render_template('number_info.html', user=get_user(session['user_id']), result=result, number=number, settings=settings)
-        else:
-            flash('Failed to fetch data! Try again.', 'error')
+    chat_history[uid_str].append({
+        "question": question,
+        "answer": answer,
+        "timestamp": datetime.now().isoformat()
+    })
     
-    return render_template('number_info.html', user=user, settings=settings)
+    # Keep only last 50 messages
+    if len(chat_history[uid_str]) > 50:
+        chat_history[uid_str] = chat_history[uid_str][-50:]
+    
+    save_json(CHAT_HISTORY_FILE, chat_history)
 
-@app.route('/call-bomber', methods=['GET', 'POST'])
-@login_required
-def call_bomber():
-    user = get_user(session['user_id'])
+# ==================== MAIN BOT HANDLERS ====================
+
+@bot.message_handler(commands=['start'])
+def cmd_start(m):
+    if is_banned(m.from_user.id):
+        return bot.reply_to(m, "❌ You are banned from using this bot.")
     
-    if request.method == 'POST':
-        number = request.form.get('number', '').strip()
-        duration = int(request.form.get('duration', 5))
-        
-        if not number or len(number) != 10 or not number.isdigit():
-            flash('Invalid phone number!', 'error')
-            return render_template('call_bomber.html', user=user, settings=settings)
-        
-        # Check credits
-        if user['credits'] < settings.get('credits_per_bomb', 1):
-            flash('Insufficient credits!', 'error')
-            return render_template('call_bomber.html', user=user, settings=settings)
-        
-        # Deduct credit
-        users[session['user_id']]['credits'] -= settings.get('credits_per_bomb', 1)
-        users[session['user_id']]['total_bombs'] += 1
+    user = get_user(m.from_user.id)
+    update_user_activity(m.from_user.id, m.from_user.first_name or "", m.from_user.username or "")
+    
+    kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    kb.row("🤖 Ask AI", "💬 Chat Mode")
+    kb.row("📊 My Stats", "❓ Help")
+    
+    welcome = f"""
+╔════════════════════════════════╗
+║     <b>🤖 AI ASSISTANT BOT</b>      ║
+╚════════════════════════════════╝
+
+👋 <b>Welcome, {m.from_user.first_name}!</b>
+
+I'm an advanced AI assistant powered by WORMgpt. 
+I can answer your questions intelligently!
+
+<b>━━━━━ QUICK START ━━━━━</b>
+
+🔹 <b>/ai [question]</b> - Ask anything
+🔹 <b>/ask [question]</b> - Alternative command
+🔹 <b>/chat</b> - Enable chat mode (auto-reply)
+🔹 <b>/history</b> - View chat history
+🔹 <b>/clear</b> - Clear your history
+
+<b>━━━━━ FEATURES ━━━━━</b>
+
+✅ Smart AI responses
+✅ Clean formatted replies
+✅ Chat mode for conversations
+✅ Unlimited questions
+✅ Fast response time
+
+<b>━━━━━━━━━━━━━━━━━━━━━</b>
+
+💡 <b>Just send me any question!</b>
+"""
+    
+    bot.send_message(m.chat.id, welcome, reply_markup=kb)
+
+@bot.message_handler(commands=['ai', 'ask'])
+def cmd_ai(m):
+    if is_banned(m.from_user.id):
+        return
+    
+    if not settings.get("bot_active", True):
+        return bot.reply_to(m, settings.get("maintenance_msg"))
+    
+    # Extract question
+    question = m.text.replace('/ai', '').replace('/ask', '').strip()
+    
+    if not question:
+        return bot.reply_to(
+            m,
+            "❓ <b>Please provide a question!</b>\n\n"
+            "<b>Usage:</b>\n"
+            "<code>/ai What is AI?</code>\n"
+            "<code>/ask How does gravity work?</code>"
+        )
+    
+    # Send processing message
+    processing = bot.reply_to(m, "🤔 <i>Thinking...</i>")
+    
+    # Get AI response
+    answer = make_ai_request(question)
+    
+    if answer:
+        # Update stats
+        uid_str = str(m.from_user.id)
+        users[uid_str]["total_requests"] += 1
+        settings["total_requests"] += 1
         save_json(USERS_FILE, users)
-        
-        flash(f'Bombing started on {number} for {duration} minutes!', 'success')
-        
-        # TODO: Implement actual bombing (background task)
-        
-        return render_template('call_bomber.html', user=get_user(session['user_id']), settings=settings, bombing=True, number=number, duration=duration)
-    
-    return render_template('call_bomber.html', user=user, settings=settings)
-
-@app.route('/buy-credits')
-@login_required
-def buy_credits():
-    user = get_user(session['user_id'])
-    return render_template('buy_credits.html', user=user, prices=CREDIT_PRICES, settings=settings)
-
-@app.route('/contact')
-def contact():
-    return render_template('contact.html', settings=settings)
-
-# ==================== ADMIN ROUTES ====================
-
-@app.route('/admin')
-@admin_required
-def admin_panel():
-    total_users = len(users)
-    total_credits = sum(u.get('credits', 0) for u in users.values())
-    
-    return render_template('admin/dashboard.html', 
-                         total_users=total_users,
-                         total_credits=total_credits,
-                         settings=settings)
-
-@app.route('/admin/users')
-@admin_required
-def admin_users():
-    return render_template('admin/users.html', users=users, settings=settings)
-
-@app.route('/admin/settings', methods=['GET', 'POST'])
-@admin_required
-def admin_settings():
-    if request.method == 'POST':
-        settings['site_name'] = request.form.get('site_name', settings['site_name'])
-        settings['maintenance'] = request.form.get('maintenance') == 'on'
-        settings['bomber_enabled'] = request.form.get('bomber_enabled') == 'on'
-        settings['number_info_enabled'] = request.form.get('number_info_enabled') == 'on'
-        settings['credits_per_search'] = int(request.form.get('credits_per_search', 1))
-        settings['credits_per_bomb'] = int(request.form.get('credits_per_bomb', 1))
-        settings['signup_credits'] = int(request.form.get('signup_credits', 5))
-        settings['owner_username'] = request.form.get('owner_username', OWNER_USERNAME)
-        settings['channel_link'] = request.form.get('channel_link', CHANNEL_LINK)
-        settings['dm_link'] = request.form.get('dm_link', DM_LINK)
-        
         save_json(SETTINGS_FILE, settings)
-        flash('Settings updated!', 'success')
-        return redirect(url_for('admin_settings'))
-    
-    return render_template('admin/settings.html', settings=settings)
-
-@app.route('/admin/add-credits', methods=['POST'])
-@admin_required
-def admin_add_credits():
-    user_id = request.form.get('user_id')
-    amount = int(request.form.get('amount', 0))
-    
-    if user_id in users:
-        users[user_id]['credits'] = users[user_id].get('credits', 0) + amount
-        save_json(USERS_FILE, users)
-        flash(f'Added {amount} credits to user!', 'success')
+        
+        # Save history
+        save_chat_history(m.from_user.id, question, answer)
+        
+        # Format and send reply
+        reply = format_ai_reply(question, answer)
+        
+        try:
+            bot.edit_message_text(reply, m.chat.id, processing.message_id)
+        except:
+            bot.delete_message(m.chat.id, processing.message_id)
+            bot.send_message(m.chat.id, reply)
     else:
-        flash('User not found!', 'error')
-    
-    return redirect(url_for('admin_users'))
+        bot.edit_message_text(
+            "❌ <b>Sorry, couldn't get a response.</b>\n\n"
+            "Please try again later!",
+            m.chat.id,
+            processing.message_id
+        )
 
-@app.route('/admin/delete-user/<user_id>')
-@admin_required
-def admin_delete_user(user_id):
-    if user_id in users:
-        del users[user_id]
+@bot.message_handler(commands=['chat'])
+def cmd_chat_mode(m):
+    if is_banned(m.from_user.id):
+        return
+    
+    uid_str = str(m.from_user.id)
+    user = get_user(m.from_user.id)
+    
+    # Toggle chat mode
+    current_mode = users[uid_str].get("chat_mode", False)
+    users[uid_str]["chat_mode"] = not current_mode
+    save_json(USERS_FILE, users)
+    
+    if users[uid_str]["chat_mode"]:
+        msg = """
+✅ <b>CHAT MODE ENABLED</b>
+
+Now I'll respond to all your messages automatically!
+
+💬 Just type anything and I'll reply.
+
+🔹 <b>/chat</b> - Disable chat mode
+🔹 <b>/clear</b> - Clear history
+"""
+    else:
+        msg = """
+❌ <b>CHAT MODE DISABLED</b>
+
+Use <b>/ai</b> or <b>/ask</b> to get responses.
+
+💡 <b>/chat</b> - Enable chat mode again
+"""
+    
+    bot.reply_to(m, msg)
+
+@bot.message_handler(commands=['history'])
+def cmd_history(m):
+    if is_banned(m.from_user.id):
+        return
+    
+    uid_str = str(m.from_user.id)
+    
+    if uid_str not in chat_history or not chat_history[uid_str]:
+        return bot.reply_to(m, "📭 <b>No chat history yet!</b>\n\nStart asking questions to build history.")
+    
+    history = chat_history[uid_str][-10:]  # Last 10
+    
+    msg = "<b>📜 YOUR CHAT HISTORY</b>\n\n"
+    
+    for i, item in enumerate(reversed(history), 1):
+        timestamp = item.get("timestamp", "")[:10]
+        question = item.get("question", "")[:50]
+        
+        msg += f"<b>{i}.</b> {question}...\n"
+        msg += f"   <i>{timestamp}</i>\n\n"
+    
+    msg += f"<code>───────────────────</code>\n"
+    msg += f"<b>Total:</b> {len(chat_history[uid_str])} conversations\n\n"
+    msg += f"💡 Use <b>/clear</b> to clear history"
+    
+    bot.send_message(m.chat.id, msg)
+
+@bot.message_handler(commands=['clear'])
+def cmd_clear(m):
+    if is_banned(m.from_user.id):
+        return
+    
+    uid_str = str(m.from_user.id)
+    
+    if uid_str in chat_history:
+        chat_history[uid_str] = []
+        save_json(CHAT_HISTORY_FILE, chat_history)
+    
+    bot.reply_to(m, "✅ <b>History cleared!</b>\n\nStart fresh conversations now.")
+
+@bot.message_handler(commands=['stats'])
+def cmd_stats(m):
+    if is_banned(m.from_user.id):
+        return
+    
+    user = get_user(m.from_user.id)
+    uid_str = str(m.from_user.id)
+    
+    total_chats = len(chat_history.get(uid_str, []))
+    
+    msg = f"""
+<b>📊 YOUR STATISTICS</b>
+
+<b>━━━━━ USAGE ━━━━━</b>
+
+🤖 <b>Total Requests:</b> {user.get('total_requests', 0)}
+💬 <b>Chat History:</b> {total_chats}
+📅 <b>Joined:</b> {user.get('joined', '')[:10]}
+⚡ <b>Chat Mode:</b> {'ON' if user.get('chat_mode') else 'OFF'}
+
+<b>━━━━━ ACCOUNT ━━━━━</b>
+
+👤 <b>Name:</b> {user.get('name', 'N/A')}
+🆔 <b>User ID:</b> <code>{m.from_user.id}</code>
+
+<b>━━━━━━━━━━━━━━━━━━━━━</b>
+
+💡 Keep chatting to increase stats!
+"""
+    
+    bot.send_message(m.chat.id, msg)
+
+@bot.message_handler(commands=['help'])
+def cmd_help(m):
+    help_msg = """
+<b>❓ HELP & COMMANDS</b>
+
+<b>━━━━━ BASIC COMMANDS ━━━━━</b>
+
+🔹 <b>/start</b> - Start the bot
+🔹 <b>/ai [question]</b> - Ask AI
+🔹 <b>/ask [question]</b> - Alternative
+🔹 <b>/chat</b> - Toggle chat mode
+🔹 <b>/history</b> - View history
+🔹 <b>/clear</b> - Clear history
+🔹 <b>/stats</b> - Your statistics
+🔹 <b>/help</b> - This message
+
+<b>━━━━━ HOW TO USE ━━━━━</b>
+
+<b>Method 1: Commands</b>
+<code>/ai What is quantum physics?</code>
+<code>/ask Explain blockchain</code>
+
+<b>Method 2: Chat Mode</b>
+<code>/chat</code> (enable)
+Then just type normally!
+
+<b>━━━━━ FEATURES ━━━━━</b>
+
+✅ Smart AI responses
+✅ Clean formatting
+✅ Fast replies
+✅ Chat history
+✅ Unlimited questions
+
+<b>━━━━━━━━━━━━━━━━━━━━━</b>
+
+💡 <b>Just ask anything!</b>
+"""
+    
+    bot.send_message(m.chat.id, help_msg)
+
+@bot.message_handler(func=lambda m: m.text and m.text.startswith(('🤖', '💬', '📊', '❓')))
+def btn_handler(m):
+    if m.text == "🤖 Ask AI":
+        bot.send_message(
+            m.chat.id,
+            "💬 <b>Send your question!</b>\n\n"
+            "Or use: <code>/ai your question</code>"
+        )
+    elif m.text == "💬 Chat Mode":
+        cmd_chat_mode(m)
+    elif m.text == "📊 My Stats":
+        cmd_stats(m)
+    elif m.text == "❓ Help":
+        cmd_help(m)
+
+@bot.message_handler(func=lambda m: True, content_types=['text'])
+def handle_text(m):
+    if is_banned(m.from_user.id):
+        return
+    
+    if not settings.get("bot_active", True):
+        return
+    
+    uid_str = str(m.from_user.id)
+    user = get_user(m.from_user.id)
+    
+    # Check if chat mode is enabled
+    if not users[uid_str].get("chat_mode", False):
+        return bot.reply_to(
+            m,
+            "💡 <b>Use commands to interact!</b>\n\n"
+            "<b>Quick start:</b>\n"
+            "🔹 <code>/ai your question</code>\n"
+            "🔹 <code>/chat</code> - Enable auto-reply"
+        )
+    
+    # Chat mode active - process message
+    question = m.text.strip()
+    
+    if not question or len(question) < 2:
+        return
+    
+    processing = bot.reply_to(m, "💭 <i>Processing...</i>")
+    
+    answer = make_ai_request(question)
+    
+    if answer:
+        # Update stats
+        users[uid_str]["total_requests"] += 1
+        settings["total_requests"] += 1
         save_json(USERS_FILE, users)
-        flash('User deleted!', 'success')
+        save_json(SETTINGS_FILE, settings)
+        
+        # Save history
+        save_chat_history(m.from_user.id, question, answer)
+        
+        # Format reply
+        reply = format_ai_reply(question, answer)
+        
+        try:
+            bot.edit_message_text(reply, m.chat.id, processing.message_id)
+        except:
+            bot.delete_message(m.chat.id, processing.message_id)
+            bot.send_message(m.chat.id, reply)
+    else:
+        bot.edit_message_text(
+            "❌ <b>Error getting response.</b>\n\nPlease try again!",
+            m.chat.id,
+            processing.message_id
+        )
+
+# ==================== ADMIN BOT ====================
+
+@admin_bot.message_handler(commands=['start'])
+def admin_start(m):
+    if not is_owner(m.from_user.id):
+        return admin_bot.send_message(m.chat.id, "❌ Unauthorized!")
     
-    return redirect(url_for('admin_users'))
-
-# ==================== API ENDPOINTS ====================
-
-@app.route('/api/bomber/start', methods=['POST'])
-@login_required
-def api_bomber_start():
-    data = request.json
-    number = data.get('number')
-    duration = int(data.get('duration', 5))
+    total_users = len(users)
+    total_requests = settings.get("total_requests", 0)
+    active_chats = sum(1 for u in users.values() if u.get("chat_mode"))
     
-    # TODO: Implement bombing logic
+    msg = f"""
+<b>🔐 ADMIN PANEL</b>
+
+<b>━━━━━ STATISTICS ━━━━━</b>
+
+👥 <b>Total Users:</b> {total_users}
+🤖 <b>Total Requests:</b> {total_requests}
+💬 <b>Active Chats:</b> {active_chats}
+🤖 <b>Bot Status:</b> {'🟢 Active' if settings.get('bot_active') else '🔴 Maintenance'}
+
+<b>━━━━━ COMMANDS ━━━━━</b>
+
+<b>/stats</b> - Detailed statistics
+<b>/users</b> - List all users
+<b>/broadcast</b> - Send message to all
+<b>/ban [id]</b> - Ban user
+<b>/unban [id]</b> - Unban user
+<b>/maintenance</b> - Toggle maintenance
+<b>/clearall</b> - Clear all history
+
+<b>━━━━━━━━━━━━━━━━━━━━━</b>
+
+🔑 Owner: {OWNER_ID}
+"""
     
-    return jsonify({"status": "success", "message": "Bombing started"})
+    admin_bot.send_message(m.chat.id, msg)
 
-# ==================== RUN ====================
+@admin_bot.message_handler(commands=['stats'])
+def admin_stats(m):
+    if not is_owner(m.from_user.id):
+        return
+    
+    total_users = len(users)
+    total_requests = settings.get("total_requests", 0)
+    total_history = sum(len(h) for h in chat_history.values())
+    active_chats = sum(1 for u in users.values() if u.get("chat_mode"))
+    banned = len(settings.get("banned_users", []))
+    
+    # Recent users (last 24h)
+    from datetime import datetime, timedelta
+    now = datetime.now()
+    recent = sum(
+        1 for u in users.values()
+        if (now - datetime.fromisoformat(u.get("last_active", "2000-01-01"))).days < 1
+    )
+    
+    msg = f"""
+<b>📊 DETAILED STATISTICS</b>
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+<b>━━━━━ USERS ━━━━━</b>
+
+👥 <b>Total Users:</b> {total_users}
+⚡ <b>Active (24h):</b> {recent}
+💬 <b>Chat Mode ON:</b> {active_chats}
+🚫 <b>Banned:</b> {banned}
+
+<b>━━━━━ ACTIVITY ━━━━━</b>
+
+🤖 <b>Total Requests:</b> {total_requests}
+📜 <b>Total History:</b> {total_history}
+📈 <b>Avg per User:</b> {total_requests // total_users if total_users > 0 else 0}
+
+<b>━━━━━ STATUS ━━━━━</b>
+
+🔘 <b>Bot:</b> {'🟢 Active' if settings.get('bot_active') else '🔴 Maintenance'}
+📅 <b>Date:</b> {datetime.now().strftime('%d %b %Y')}
+
+<b>━━━━━━━━━━━━━━━━━━━━━</b>
+"""
+    
+    admin_bot.send_message(m.chat.id, msg)
+
+@admin_bot.message_handler(commands=['users'])
+def admin_users(m):
+    if not is_owner(m.from_user.id):
+        return
+    
+    if not users:
+        return admin_bot.send_message(m.chat.id, "📭 No users yet!")
+    
+    msg = "<b>👥 USER LIST</b>\n\n"
+    
+    sorted_users = sorted(
+        users.items(),
+        key=lambda x: x[1].get("total_requests", 0),
+        reverse=True
+    )
+    
+    for i, (uid, user) in enumerate(sorted_users[:20], 1):
+        name = user.get("name", "Unknown")
+        username = user.get("username", "N/A")
+        requests = user.get("total_requests", 0)
+        chat_mode = "💬" if user.get("chat_mode") else ""
+        
+        msg += f"<b>{i}.</b> {name} (@{username})\n"
+        msg += f"   🆔 <code>{uid}</code> {chat_mode}\n"
+        msg += f"   📊 {requests} requests\n\n"
+    
+    if len(users) > 20:
+        msg += f"\n<i>... and {len(users) - 20} more</i>"
+    
+    admin_bot.send_message(m.chat.id, msg)
+
+@admin_bot.message_handler(commands=['broadcast'])
+def admin_broadcast(m):
+    if not is_owner(m.from_user.id):
+        return
+    
+    msg = admin_bot.send_message(
+        m.chat.id,
+        "📢 <b>BROADCAST MESSAGE</b>\n\n"
+        "Send the message to broadcast to all users:\n\n"
+        "Or /cancel"
+    )
+    
+    admin_bot.register_next_step_handler(msg, process_broadcast)
+
+def process_broadcast(m):
+    if m.text == '/cancel':
+        return admin_bot.send_message(m.chat.id, "❌ Cancelled!")
+    
+    message = m.text
+    
+    progress = admin_bot.send_message(m.chat.id, "📤 Broadcasting...")
+    
+    success = 0
+    failed = 0
+    
+    for uid in users:
+        try:
+            bot.send_message(
+                int(uid),
+                f"📢 <b>ANNOUNCEMENT</b>\n\n{message}"
+            )
+            success += 1
+        except:
+            failed += 1
+        time.sleep(0.05)
+    
+    admin_bot.edit_message_text(
+        f"✅ <b>Broadcast Complete!</b>\n\n"
+        f"📤 Sent: {success}\n"
+        f"❌ Failed: {failed}",
+        m.chat.id,
+        progress.message_id
+    )
+
+@admin_bot.message_handler(commands=['ban'])
+def admin_ban(m):
+    if not is_owner(m.from_user.id):
+        return
+    
+    try:
+        uid = int(m.text.split()[1])
+        
+        if uid in settings.get("banned_users", []):
+            return admin_bot.reply_to(m, "⚠️ Already banned!")
+        
+        settings.setdefault("banned_users", []).append(uid)
+        save_json(SETTINGS_FILE, settings)
+        
+        admin_bot.reply_to(m, f"✅ Banned user: <code>{uid}</code>")
+        
+        try:
+            bot.send_message(uid, "❌ You have been banned from using this bot.")
+        except:
+            pass
+    except:
+        admin_bot.reply_to(m, "❌ Usage: /ban user_id")
+
+@admin_bot.message_handler(commands=['unban'])
+def admin_unban(m):
+    if not is_owner(m.from_user.id):
+        return
+    
+    try:
+        uid = int(m.text.split()[1])
+        
+        if uid not in settings.get("banned_users", []):
+            return admin_bot.reply_to(m, "⚠️ User not banned!")
+        
+        settings["banned_users"].remove(uid)
+        save_json(SETTINGS_FILE, settings)
+        
+        admin_bot.reply_to(m, f"✅ Unbanned user: <code>{uid}</code>")
+    except:
+        admin_bot.reply_to(m, "❌ Usage: /unban user_id")
+
+@admin_bot.message_handler(commands=['maintenance'])
+def admin_maintenance(m):
+    if not is_owner(m.from_user.id):
+        return
+    
+    current = settings.get("bot_active", True)
+    settings["bot_active"] = not current
+    save_json(SETTINGS_FILE, settings)
+    
+    status = "🟢 ACTIVE" if settings["bot_active"] else "🔴 MAINTENANCE"
+    admin_bot.reply_to(m, f"✅ Bot status: {status}")
+
+# ==================== RUN BOTS ====================
+
+def run_main_bot():
+    while True:
+        try:
+            logger.info("🤖 Main bot starting...")
+            bot.infinity_polling(timeout=60, long_polling_timeout=60)
+        except Exception as e:
+            logger.error(f"Main bot error: {e}")
+            time.sleep(5)
+
+def run_admin_bot():
+    while True:
+        try:
+            logger.info("⚙️ Admin bot starting...")
+            admin_bot.infinity_polling(timeout=60, long_polling_timeout=60)
+        except Exception as e:
+            logger.error(f"Admin bot error: {e}")
+            time.sleep(5)
+
+if __name__ == "__main__":
+    print("\n" + "="*60)
+    print("╔════════════════════════════════════════════════════╗")
+    print("║                                                    ║")
+    print("║          🤖 AI CHATBOT - WORMGPT POWERED          ║")
+    print("║                                                    ║")
+    print("║        Smart Replies | Clean Format | Fast        ║")
+    print("║                                                    ║")
+    print("╚════════════════════════════════════════════════════╝")
+    print("="*60)
+    
+    logger.info(f"👑 Owner: {OWNER_ID}")
+    logger.info(f"👥 Users: {len(users)}")
+    logger.info(f"🤖 Total Requests: {settings.get('total_requests', 0)}")
+    
+    print("\n" + "="*60)
+    print("✅ BOTS STARTING!")
+    print("🛑 Press Ctrl+C to stop")
+    print("="*60 + "\n")
+    
+    main_thread = threading.Thread(target=run_main_bot, daemon=True)
+    admin_thread = threading.Thread(target=run_admin_bot, daemon=True)
+    
+    main_thread.start()
+    admin_thread.start()
+    
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("\n👋 Stopping bots...")
